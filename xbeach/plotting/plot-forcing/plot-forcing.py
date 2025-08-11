@@ -5,14 +5,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 class plot_forcing():
-    def __init__(self):
+    def __init__(self, savepoint=4):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
-        self.path_to_forcing =  os.path.join(self.file_dir, "..", "..", "..", "data", "forcing", "xbeach4.dat")
-
+        self.focring_dir = os.path.join(self.file_dir, "..", "..", "..", "data", "forcing")
+        self.fn_forcing =  os.path.join(self.focring_dir, "xbeach{}.dat" .format(savepoint))
+        self.savepoint = savepoint
         
     def plot(self, var="el", savefig=False):
         label, ylabel, color = self.var2label(var)
-        df = self.frcing_to_dataframe(self.path_to_forcing)
+        df = self.frcing_to_dataframe(self.fn_forcing)
         
         stop_idx = df.loc[df["t_sec"]==150300].index[0]
         df_trnc = df.iloc[0:stop_idx]
@@ -36,7 +37,29 @@ class plot_forcing():
                         )
             plt.close()
 
+    def compare_forcing(self, var, prior_dir, t_shift=0,savefig=False):
+        label, ylabel, color = self.var2label(var)
+        df_current = self.frcing_to_dataframe(self.fn_forcing)
+        fn_prior = os.path.join(self.focring_dir, prior_dir, "xbeach{}.dat" .format(self.savepoint))
+        df_prior = self.frcing_to_dataframe(fn_prior)
 
+        fig, ax = plt.subplots(1,1, figsize=(5,3))
+        ax.plot(df_current["t_hr"], df_current[var], color="k", lw=1.5, label="Current")
+        ax.plot(df_prior["t_hr"]+t_shift, df_prior[var], color="k", ls="-.", lw=0.5, label="Prior - {}" .format(prior_dir))
+        ax.legend()
+        ax.set_xlabel("Time (Hours)")
+        ax.set_ylabel(ylabel)
+
+
+        if savefig:
+            fn = "{}-{}.png" .format(var, self.savepoint)
+            plt.savefig(fn,
+                        transparent=False, 
+                        dpi=500,
+                        bbox_inches='tight',
+                        pad_inches=0.1,
+                        )
+            plt.close()
 
     def var2label(self, var):
         v2l = { "el":"Water Elevation",
@@ -44,7 +67,7 @@ class plot_forcing():
                 "Tp": "Peak Period",
                 "wavedir": "Wave Direction"
         }
-        v2y = { "el": "Water Elevation (m; ___)",
+        v2y = { "el": "Water Elevation (m)",
                 "hs": "Significant Wave Height (m)",
                 "Tp": "Peak Period (s)",
                 "wavedir": "Wave Direction"
@@ -58,7 +81,7 @@ class plot_forcing():
 
     def frcing_to_dataframe(self, fn, n_header=3, n_var=7):
         t, el, wx, wy, hs, Tp, wavedir = [], [], [], [], [], [], [],
-        with open(self.path_to_forcing,'r') as f:
+        with open(fn,'r') as f:
             for cnt, line in enumerate(f.readlines()):
                 if cnt < n_header:
                     if "VARIABLES" in line:
@@ -74,8 +97,8 @@ class plot_forcing():
                 hs.append(hs_)
                 Tp.append(Tp_)
 
-                # wavedir_ = self.cartesian_to_nautical_angle(wavedir_)
-                # wavedir_ = self.nautical_to_xbeach_angle(wavedir_, alfa=55.92839019260679)
+                wavedir_ = self.cartesian_to_nautical_angle(wavedir_)
+                wavedir_ = self.nautical_to_xbeach_angle(wavedir_, alfa=55.92839019260679)
 
                 wavedir.append(wavedir_)
         
@@ -124,10 +147,12 @@ class plot_forcing():
 
 
 if __name__ == "__main__":
-    pf = plot_forcing()
-    pf.plot(var="wavedir", savefig=False)
-    # pf.plot(var="hs", savefig=False)
-    # pf.plot(var="Tp", savefig=False)
+    # pf = plot_forcing(savepoint=sp)
+    # pf.plot(var="wavedir", savefig=False)
 
+    for sp in [1, 2, 3, 4]:
+        pf = plot_forcing(savepoint=sp)
+        for var in ["wavedir"]:
+            pf.compare_forcing(var=var, prior_dir="2025-07-11", t_shift=41.25, savefig=True)
 
     plt.show()
