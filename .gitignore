@@ -1,0 +1,13 @@
+# data
+data/
+xbeach/models/
+xbeach/examples/
+
+# 
+*.mp4
+*.png
+*.DS_Store
+*.pptx
+*.tiff
+*.xml
+*.pdf
