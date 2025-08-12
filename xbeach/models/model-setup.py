@@ -58,7 +58,7 @@ class setup_xbeach():
                     "dtheta_s"  : 10,           # Directional in case of stationary refraction; not used in stationary mode
 
                     # -- numerics input --
-                    "CFL"       : 0.4,          # Maximum courant-friedrichs-lewy number
+                    "CFL"       : 0.5,          # Maximum courant-friedrichs-lewy number
                     # "eps"       : 0.001,        # Threshold water depth above which cells are considered wet
                     # "front"     : "wlevel",     # Switch for seaward flow boundary (abs_1d, abs_2d, wall, wlevel, nonh_1d, waveflume); switches to abs_1d for
                     # "back"      : "wlevel",     # Switch for boundary at bay side (wall, abs_1d, abs_2d, wlevel)   
@@ -83,7 +83,7 @@ class setup_xbeach():
 
                     # -- boundary conditions --
                     "zs0file"   : "water_elev.dat", # Name of tide boundary condition series
-                    "tideloc"   : 4,                # Number of corner points on which a tide time series is specified
+                    "tideloc"   : 2,                # Number of corner points on which a tide time series is specified
                     # "tidetype"  : "velocity",     # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
                     "zs0"       : 0,                # Inital water level
                     # "paulrevere": 0 ,             # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
@@ -93,7 +93,7 @@ class setup_xbeach():
                     # -- swan wave input options
                     "dthetaS_XB": 0,                # The (counter-clockwise) angle in the degrees needed to rotate from the x-axis in swan to the x-axis pointing east
                     "wbctype"   : "swan",           # swan wave input
-                    "bcfile"    : "filelist.txt",     # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
+                    "bcfile"    : "loclist.txt",     # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
 
                     # -- wave calculation options
                     "wavemodel" : "surfbeat",     # stationary (0), surfbeat (1) or non-hydrostatic (2)
@@ -379,20 +379,22 @@ class setup_xbeach():
             if file_i == 0:
                 frcng_df = df_.copy()
                 frcng_df["el{}" .format(file_i+1)] = df_["el"]
-                frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
-                frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
-                frcng_df["mainang{}" .format(file_i+1)] = df_["mainang"]
-                del frcng_df["el"]
-                del frcng_df["Hs"]
-                del frcng_df["Tp"]
-                del frcng_df["mainang"]
+                if self.xbeach_params["wbctype"] != "swan":
+                    frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
+                    frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
+                    frcng_df["mainang{}" .format(file_i+1)] = df_["mainang"]
+                    del frcng_df["el"]
+                    del frcng_df["Hs"]
+                    del frcng_df["Tp"]
+                    del frcng_df["mainang"]
             else:
                 frcng_df["el{}" .format(file_i+1)] = df_["el"]
-                frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
-                frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
-                frcng_df["mainang{}" .format(file_i+1)] = df_["mainang"]
+                if self.xbeach_params["wbctype"] != "swan":
+                    frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
+                    frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
+                    frcng_df["mainang{}" .format(file_i+1)] = df_["mainang"]
 
-            
+                
 
         # -- water elevations --
         """
@@ -416,7 +418,9 @@ class setup_xbeach():
 
         if self.xbeach_params["tideloc"] == 1:
             elev_df = frcng_df[["t_sec", "el1"]]
-        else:
+        elif self.xbeach_params["tideloc"] == 2:
+            elev_df = frcng_df[["t_sec", "el1", "el4"]]       # forcing points must be clockwise around domain starting from lower left corner
+        elif self.xbeach_params["tideloc"] == 4:
             elev_df = frcng_df[["t_sec", "el1", "el4", "el3", "el2"]]       # forcing points must be clockwise around domain starting from lower left corner
 
         fn_out = os.path.join(self.path_to_model, self.xbeach_params["zs0file"])
@@ -432,7 +436,8 @@ class setup_xbeach():
                 with open(fn_out, 'w') as f:
                     f.write("FILELIST\n")
                     for i in range(s_, e_):
-                        fn = os.path.join("swan", "swanpt{}-t{}.out\n" .format(sp, i))
+                        # fn = os.path.join("swan", )
+                        fn = "swanpt{}-t{}.out\n" .format(sp, i)
                         f.write("900 0.5 {}" .format(fn))
 
             # now writing loclist
@@ -441,7 +446,7 @@ class setup_xbeach():
                 f.write("LOCLIST\n" .format(self.model_name))
                 f.write("0. 0. filelist{}.txt\n" .format(swan_pts[0]))
                 f.write("0. {}. filelist{}.txt\n" .format(self.xbeach_params["ny"], swan_pts[1]))
-
+            self.xbeach_params["dthetaS_XB"] = self.alfa
 
         elif self.xbeach_params["wbctype"]== "jonstable":
             if self.xbeach_params["nspectrumloc"] == 4:  # if more than one wave spectra provided
@@ -549,24 +554,21 @@ class setup_xbeach():
         dt = (df["t"].iloc[1] - df["t"].iloc[0])*60*60         # tiime setp in seconds; converting from hours.
         df["t_sec"] = np.linspace(0, (len(df)-1)*dt, len(df))
         
-        # ---
-        # for testing
-        # wavedir = 270
-        # print("drs temporarily setting all angles to {}" .format(wavedir))
-        """model returns NaN when using provided wave angles. 
-           I think waves start offshore
-        """
-        # ---
+        if self.xbeach_params["wbctype"] != "swan":
+            # ---
+            # for testing
+            # wavedir = 270
+            # print("drs temporarily setting all angles to {}" .format(wavedir))
+            # ---
 
-        print("need to figureout s in jonswap params file")
-        df["mainang"] = wavedir   # main wave angle
-        df["gammajsp"] = 3.3    # peak enhancement factor for jonswap; not used in stationary mode
-        df["s"] = 50          # directional spreading coeff (larger value results in longer wave crests)
-        df["duration"] = dt   # duration of wave conditions
-        df["dtbc"] = 0.5        # Timestep used to describe time series of wave energy and long wave flux at offshore boundary
+            print("need to figureout s in jonswap params file")
+            df["mainang"] = wavedir   # main wave angle
+            df["gammajsp"] = 3.3    # peak enhancement factor for jonswap; not used in stationary mode
+            df["s"] = 50          # directional spreading coeff (larger value results in longer wave crests)
+            df["duration"] = dt   # duration of wave conditions
+            df["dtbc"] = 0.5        # Timestep used to describe time series of wave energy and long wave flux at offshore boundary
 
         if t_start!=0:
-            print("Starting at t={} hr of Don's simulation." .format(t_start))
             df = df.loc[df["t"]>=t_start]
             del df["t"]
             df["t"] = np.linspace(0, (len(df)-1)*dt/3600, len(df))
@@ -619,7 +621,7 @@ class setup_xbeach():
                     swan_spectra[swan_loc_cnt][time].append(line)
 
         # each swan file represents 15 minutes.
-        swan_dir_out = self.make_directory(os.path.join(self.path_to_model, "swan")) 
+        # swan_dir_out = self.make_directory(os.path.join(self.path_to_model, "swan")) 
         t_start_step = int(t_start*60/15)
         t_end_step = list(swan_spectra[swan_loc_cnt].keys())[-1]
         for spectra in swan_points:
@@ -628,7 +630,8 @@ class setup_xbeach():
                 n_swan_spectra += 1
                 if time == 0:
                     continue
-                fn_out = os.path.join(swan_dir_out, "swanpt{}-t{}.out" .format(spectra, time))
+                # fn_out = os.path.join(swan_dir_out, "swanpt{}-t{}.out" .format(spectra, time))
+                fn_out = os.path.join(self.path_to_model, "swanpt{}-t{}.out" .format(spectra, time))
                 latlong_written = False
                 with open(fn_out, 'w') as f:
                     for l in header_lines:
