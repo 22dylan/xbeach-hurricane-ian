@@ -1,6 +1,6 @@
 # data
 data/
-xbeach/models/
+xbeach/models/*/
 xbeach/examples/
 
 # 
@@ -11,3 +11,4 @@ xbeach/examples/
 *.tiff
 *.xml
 *.pdf
+*.xlsx
