@@ -31,20 +31,23 @@ def process_swan_to_points(n_header, n_locs):
                     
                     if (time in swan_spectra[swan_loc_cnt]) == False:
                         swan_spectra[swan_loc_cnt][time] = []
-                    swan_spectra[swan_loc_cnt][time].append(curr_date_time)
+                    # swan_spectra[swan_loc_cnt][time].append(curr_date_time)
                 
                 swan_spectra[swan_loc_cnt][time].append(line)
 
 
-
-    for spectra in range(n_locs):
-        for time in range(len(swan_spectra[spectra].keys())):
+    write_pts = [0]
+    for spectra in write_pts:
+        # for time in range(len(swan_spectra[spectra].keys())):
+        for time in range(270,290):
             if time == 0:
                 continue
             fn_out = os.path.join(os.getcwd(), "swanpt{}-t{}.out" .format(spectra+1, time))
             latlong_written = False
             with open(fn_out, 'w') as f:
                 for l in header_lines:
+                    if ("TIME" in l) or ("time coding option" in l):
+                        continue
                     if ("number of locations" in l):
                         l = "1                                  number of locations\n"
                         f.write(l)

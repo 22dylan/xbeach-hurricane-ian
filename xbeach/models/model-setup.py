@@ -25,11 +25,12 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "test",
+        "model_name": "gvm-run4-30m-nobldgs",
+        "t_start": 40,        # what time step (hr) from Don's simulations to start running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
         "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
-        # "path_to_buildings": None,
-        "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
+        "path_to_buildings": None,
+        # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
         "path_to_forcing": os.path.join(self.file_dir, "..", "..", "data", "forcing"),
         "forcing_files": ["xbeach1.dat", "xbeach2.dat", "xbeach3.dat", "xbeach4.dat"],
         "local_utm_epsg": "EPSG:32617",
@@ -92,7 +93,7 @@ class setup_xbeach():
                     # -- swan wave input options
                     "dthetaS_XB": 0,                # The (counter-clockwise) angle in the degrees needed to rotate from the x-axis in swan to the x-axis pointing east
                     "wbctype"   : "swan",           # swan wave input
-                    "bcfile"    : "spts01.out",     # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
+                    "bcfile"    : "filelist.txt",     # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
 
                     # -- wave calculation options
                     "wavemodel" : "surfbeat",     # stationary (0), surfbeat (1) or non-hydrostatic (2)
@@ -148,6 +149,7 @@ class setup_xbeach():
     def setup_inputs(self):
         input_vals = self.input_vals()
         self.set_model_name(input_vals["model_name"])
+        self.set_t_start(input_vals["t_start"])
         self.set_path_to_dem(input_vals["path_to_dem"])
         self.set_path_to_domain(input_vals["path_to_domain"])
         self.set_path_to_buildings(input_vals["path_to_buildings"])
@@ -162,6 +164,14 @@ class setup_xbeach():
         self.model_name = model_name
         self.path_to_model = os.path.join(self.file_dir, model_name)
         self.make_directory(self.path_to_model)
+
+    def set_t_start(self, val):
+        """ this t_start tells this script where in Don's output to start 
+            running XBeach. 
+            t_start units: hours
+            Don's model runs from t=0 hr to ~90 hr.
+        """
+        self.t_start = val
 
     def set_path_to_dem(self, val=None):
         self.path_to_dem = val
@@ -364,7 +374,7 @@ class setup_xbeach():
     def setup_forcing(self):
         for file_i, file in enumerate(self.forcing_files):
             fn = os.path.join(self.path_to_forcing, file)
-            df_ = self.frcing_to_dataframe(fn, file, t_start=40)
+            df_ = self.frcing_to_dataframe(fn, file, t_start=self.t_start)
             
             if file_i == 0:
                 frcng_df = df_.copy()
@@ -414,8 +424,24 @@ class setup_xbeach():
 
         # -- wave forcing --
         if self.xbeach_params["wbctype"] == "swan":
-            swan_file = os.path.join(self.path_to_forcing, "spts01.out")
-            shutil.copy(swan_file, os.path.join(self.path_to_model, "spts01.out"))
+            swan_pts = [1, 3]
+            print("need to clean this up.")
+            n_swan_spectra, s_, e_ = self.process_swan_output(n_header=100, n_locs=7, swan_points=swan_pts, t_start=self.t_start)
+            for sp in swan_pts:
+                fn_out = os.path.join(self.path_to_model, "filelist{}.txt" .format(sp))
+                with open(fn_out, 'w') as f:
+                    f.write("FILELIST\n")
+                    for i in range(s_, e_):
+                        fn = os.path.join("swan", "swanpt{}-t{}.out\n" .format(sp, i))
+                        f.write("900 0.5 {}" .format(fn))
+
+            # now writing loclist
+            fn = os.path.join(self.path_to_model, "loclist.txt")
+            with open(fn, 'w') as f:
+                f.write("LOCLIST\n" .format(self.model_name))
+                f.write("0. 0. filelist{}.txt\n" .format(swan_pts[0]))
+                f.write("0. {}. filelist{}.txt\n" .format(self.xbeach_params["ny"], swan_pts[1]))
+
 
         elif self.xbeach_params["wbctype"]== "jonstable":
             if self.xbeach_params["nspectrumloc"] == 4:  # if more than one wave spectra provided
@@ -562,6 +588,68 @@ class setup_xbeach():
 
         return df
     
+    def process_swan_output(self, n_header, n_locs, swan_points, t_start):
+        fn_swan = os.path.join(self.path_to_forcing, "spts01.out")
+        header_lines = []
+        swan_spectra = {i: {} for i in range(n_locs)}
+        swan_loc_cnt = n_locs - 1
+
+        time = -1
+        with open(fn_swan,'r') as f:
+            for cnt, line in enumerate(f.readlines()):
+                if cnt < n_header:
+                    header_lines.append(line)
+                    if ("number of locations" in line):
+                        n_locs_check = int([x.strip() for x in line.split()][0])
+                        if n_locs != n_locs_check:
+                            raise ValueError("Number of locations in input and swan file do not match. ")
+                else:
+                    if ("date and time" in line):
+                        curr_date_time = line
+                        continue
+
+                    if ("ZERO" in line) or ("FACTOR" in line) or ("NODATA" in line):
+                        swan_loc_cnt += 1
+                        if swan_loc_cnt == 7:
+                            swan_loc_cnt = 0
+                            time += 1
+                        if (time in swan_spectra[swan_loc_cnt]) == False:
+                            swan_spectra[swan_loc_cnt][time] = []
+                    
+                    swan_spectra[swan_loc_cnt][time].append(line)
+
+        # each swan file represents 15 minutes.
+        swan_dir_out = self.make_directory(os.path.join(self.path_to_model, "swan")) 
+        t_start_step = int(t_start*60/15)
+        t_end_step = list(swan_spectra[swan_loc_cnt].keys())[-1]
+        for spectra in swan_points:
+            n_swan_spectra = 0
+            for time in range(t_start_step,t_end_step):
+                n_swan_spectra += 1
+                if time == 0:
+                    continue
+                fn_out = os.path.join(swan_dir_out, "swanpt{}-t{}.out" .format(spectra, time))
+                latlong_written = False
+                with open(fn_out, 'w') as f:
+                    for l in header_lines:
+                        if ("TIME" in l) or ("time coding option" in l):
+                            continue
+                        if ("number of locations" in l):
+                            l = "1                                  number of locations\n"
+                            f.write(l)
+                            continue
+                        if "-81." in l:
+                            if latlong_written == False:
+                                f.write("  0   0\n")
+                            latlong_written = True
+                            continue
+                        f.write(l)
+                    
+                    for l in swan_spectra[spectra-1][time]:
+                        f.write(l)
+
+        return n_swan_spectra, t_start_step, t_end_step
+
     def cartesian_to_nautical_angle(self, deg):
         """ converting from cartesian to nautical angles for xbeach input
         Cartesian: waves traveling TO east are zero and counterclockwise is positive.

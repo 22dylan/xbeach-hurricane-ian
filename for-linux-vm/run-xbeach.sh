@@ -11,4 +11,3 @@
 
 cd xbeach-runs-gvm/xbeach/models/run2
 mpirun --use-hwthread-cpus xbeach
-
