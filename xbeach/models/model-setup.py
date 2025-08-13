@@ -25,15 +25,17 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "test",
+        "model_name": "gvm-run8-30m-nobldgs",
         "t_start": 40,        # what time step (hr) from Don's simulations to start running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
-        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
+        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
         "path_to_buildings": None,
         # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
         "path_to_forcing": os.path.join(self.file_dir, "..", "..", "data", "forcing"),
         "forcing_files": ["xbeach1.dat", "xbeach2.dat", "xbeach3.dat", "xbeach4.dat"],
+        "forcing_pts_geojson": os.path.join(self.file_dir, "..", "..", "data", "forcing", "forcing-pts.geojson"),
         "local_utm_epsg": "EPSG:32617",
         "drawfigs": True,
         "savefigs": True,
@@ -157,6 +159,7 @@ class setup_xbeach():
 
         self.set_path_to_forcing(input_vals["path_to_forcing"])
         self.set_forcing_files(input_vals["forcing_files"])
+        self.set_forcing_pts_geojson(input_vals["forcing_pts_geojson"])
         self.set_local_utm_epsg(input_vals["local_utm_epsg"])
         self.set_drawfigs(input_vals["drawfigs"])
         self.set_savefigs(input_vals["savefigs"])
@@ -189,6 +192,9 @@ class setup_xbeach():
     def set_forcing_files(self, val=None):
         self.forcing_files = val
 
+    def set_forcing_pts_geojson(self, val=None):
+        self.forcing_pts_geojson = val
+
     def set_local_utm_epsg(self, val=None):
         self.local_epsg = val
 
@@ -205,7 +211,7 @@ class setup_xbeach():
         grid_df, bathy, x, y = self.raster_to_xbeach_grid()         # from raster to rotated xbeach grid.
         xgr, ygr, zgr = self.xbtools_grid(bathy, x, y)              # using xbeach tools to prepare xbeach grid
         zgr, nesgr = self.add_buildings(xgr, ygr, zgr, grid_df)
-        frcng_df = self.setup_forcing()
+        frcng_df = self.setup_forcing(grid_df)
         self.create_model(xgr, ygr, zgr, nesgr, frcng_df)                          # writing out xbeach model
 
     def raster_to_xbeach_grid(self):
@@ -372,17 +378,20 @@ class setup_xbeach():
 
         return zgr, nesgr
 
-    def setup_forcing(self):
+    def read_forcing_locs(self):
+        gdf = gpd.read_file(self.forcing_pts_geojson)
+        gdf = gdf.to_crs(self.local_epsg)
+        return gdf
+
+    def setup_forcing(self, grid_df):
+        frcg_pts_gdf = self.read_forcing_locs()
         for file_i, file in enumerate(self.forcing_files):
             fn = os.path.join(self.path_to_forcing, file)
             df_ = self.frcing_to_dataframe(fn, file, t_start=self.t_start)
-            
             if file_i == 0:
                 frcng_df = df_.copy()
                 frcng_df["el{}" .format(file_i+1)] = df_["el"]
                 frcng_df["windv"] = np.sqrt(np.square(frcng_df["wx"]) + np.square(frcng_df["wy"]))
-                print(frcng_df.head())
-                fds
                 if self.xbeach_params["wbctype"] != "swan":
                     frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
                     frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
@@ -437,7 +446,9 @@ class setup_xbeach():
 
         fn_out = os.path.join(self.path_to_model, self.xbeach_params["zs0file"])
         elev_df.to_csv(fn_out, sep="\t", index=None, header=None, float_format='%10.3f')
-
+        print(frcg_pts_gdf)
+        print(grid_df.head())
+        fds
         # -- wave forcing --
         if self.xbeach_params["wbctype"] == "swan":
             swan_pts = [1, 3]
