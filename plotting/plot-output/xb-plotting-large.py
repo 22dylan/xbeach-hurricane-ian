@@ -244,9 +244,9 @@ class xb_plotting_large():
 
 if __name__ == "__main__":
     xbpl = xb_plotting_large(model_runname="gvm-run4-30m-nobldgs", var="H")
-    xbpl.read_data_xarray(var="H", t=0, rtn_time_array=True, prnt_read=True)
-    # xbpl.make_animation_imageio(tstart=900, tstop=1100, makefigs=True)
-    # xbpl.plot_timestep(t=1000, vmax=1, prnt_read=True, fname="temp.png")
+    # xbpl.read_data_xarray(var="H", t=0, rtn_time_array=True, prnt_read=True)
+    xbpl.make_animation_imageio(tstart=900, tstop=1100, makefigs=False)
+    # xbpl.plot_timestep(t=3000, vmax=1, prnt_read=True, fname="temp.png")
     plt.show()
 
 

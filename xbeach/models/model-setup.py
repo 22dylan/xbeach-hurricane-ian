@@ -25,7 +25,7 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "gvm-run6-30m-nobldgs",
+        "model_name": "test",
         "t_start": 40,        # what time step (hr) from Don's simulations to start running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
@@ -380,6 +380,9 @@ class setup_xbeach():
             if file_i == 0:
                 frcng_df = df_.copy()
                 frcng_df["el{}" .format(file_i+1)] = df_["el"]
+                frcng_df["windv"] = np.sqrt(np.square(frcng_df["wx"]) + np.square(frcng_df["wy"]))
+                print(frcng_df.head())
+                fds
                 if self.xbeach_params["wbctype"] != "swan":
                     frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
                     frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
@@ -408,7 +411,7 @@ class setup_xbeach():
             |         |
             |         |
            1|---------|4 
-           
+
            4|---------|3
             |         |
             |  ADCIRC |
