@@ -18,7 +18,7 @@ class plot_forcing():
         stop_idx = df.loc[df["t_sec"]==150300].index[0]
         df_trnc = df.iloc[0:stop_idx]
 
-        fig, ax = plt.subplots(1,1, figsize=(4,3))
+        fig, ax = plt.subplots(1,1, figsize=(5,3))
         ax.plot(df["t_hr"], df[var], color="k", lw=1.5, label=label)
         # ax.plot(df_trnc["t_hr"], df_trnc[var], color="#ff5370", lw=3, label="Truncated Elevation")
 
@@ -26,9 +26,10 @@ class plot_forcing():
         ax.legend()
         ax.set_xlabel("Time (Hours)")
         ax.set_ylabel(ylabel)
+        ax.set_title("{}-sp{}-{}" .format(var, sp, self.loc_keys[sp]))
 
         if savefig:
-            fn = "{}.png" .format(var)
+            fn = "{}-sp{}-{}.png" .format(var, sp, self.loc_keys[sp])
             plt.savefig(fn,
                         transparent=False, 
                         dpi=500,
@@ -148,12 +149,14 @@ class plot_forcing():
 
 if __name__ == "__main__":
 
-    pf = plot_forcing(savepoint=3)
-    pf.plot(var="el", savefig=False)
+    for sp in [1, 2, 3, 4]:
+        for var in ["el", "hs", "Tp", "wavedir"]:
+            pf = plot_forcing(savepoint=sp)
+            pf.plot(var=var, savefig=True)
 
-    print()
-    pf = plot_forcing(savepoint=4)
-    pf.plot(var="el", savefig=False)
+    # print()
+    # pf = plot_forcing(savepoint=4)
+    # pf.plot(var="el", savefig=False)
 
     # for sp in [1, 2, 3, 4]:
     #     pf = plot_forcing(savepoint=sp)
