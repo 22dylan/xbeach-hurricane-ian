@@ -12,3 +12,5 @@ xbeach/examples/
 *.xml
 *.pdf
 *.xlsx
+*.out
+*.tar.gz
