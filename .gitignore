@@ -2,6 +2,7 @@
 data/
 xbeach/models/*/
 xbeach/examples/
+for-blackbird/
 
 # 
 *.mp4

@@ -25,10 +25,11 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "gvm-run4-30m-nobldgs",
+        "model_name": "gvm-run6-30m-nobldgs",
         "t_start": 40,        # what time step (hr) from Don's simulations to start running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
-        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
+        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
         "path_to_buildings": None,
         # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
         "path_to_forcing": os.path.join(self.file_dir, "..", "..", "data", "forcing"),
@@ -400,12 +401,6 @@ class setup_xbeach():
         """
             Note that Don's data is provided counterclockwise around domain, 
             whereas xbeach goes clockwise. Need to be careful with this. 
-           4|---------|3
-            |         |
-            |  SWAN   |
-            |         |
-            |         |
-           1|---------|2 
 
            2|---------|3
             |         |
@@ -413,6 +408,20 @@ class setup_xbeach():
             |         |
             |         |
            1|---------|4 
+           
+           4|---------|3
+            |         |
+            |  ADCIRC |
+            |         |
+            |         |
+           1|---------|2 
+
+           3|---------|4
+            |         |
+            |  SWAN   |
+            |         |
+            |         |
+           1|---------|2 
 
         """
 

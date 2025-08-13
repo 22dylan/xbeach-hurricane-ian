@@ -6,7 +6,6 @@ import matplotlib as mpl
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import imageio
-# import netCDF4
 import seaborn as sns
 import xarray as xr
 
@@ -17,7 +16,7 @@ class xb_plotting_large():
     def __init__(self, model_runname, var="H"):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
         self.model_runname = model_runname
-        self.path_to_model = os.path.join(self.file_dir, "..", "..", "models", self.model_runname)
+        self.path_to_model = os.path.join(self.file_dir, "..", "..", "xbeach", "models", self.model_runname)
         self.var = var
         self.read_buildings()
 
@@ -73,6 +72,9 @@ class xb_plotting_large():
         elif self.var == "zs0":
             s = "Water Elevation - Tide Alone (m) \nTime {:2.0f}h ({:8.0f}s)" .format(time[t]/3600, time[t])
             cbar_s = "Water Elevation - Tide Alone (m)"
+        elif self.var == "zs1":
+            s = "Water Elevation - Minus Tide (m) \n Time {:2.0f}h ({:8.0f}s)" .format(time[t]/3600, time[t])
+            cbar_s = "Water Elevation - Minus Tide (m)"
 
         # -- drawing first plot
         pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=vmin, vmax=vmax, cmap=cmap)
@@ -173,6 +175,7 @@ class xb_plotting_large():
         slice_data = ds[var].isel(globaltime=slice(t,t+1))
         if rtn_time_array:
             time = ds["globaltime"].values
+            # print("Last time step: {} hr." .format(time[-1]/60/60))
             return slice_data.values[0,:,:], time
         else:
             return slice_data.values[0,:,:]
@@ -223,16 +226,8 @@ class xb_plotting_large():
         return path_out
 
 if __name__ == "__main__":
-    xbpl = xb_plotting_large(model_runname="test-waves3", var="H")
-    # xbpl.read_data_xarray(var="H", t=0, prnt_read=True)
-    # xbpl.make_animation_imageio(tstart=0, tstop=75, makefigs=True)
-    xbpl.plot_timestep(t=100, vmax=1, prnt_read=True)
+    xbpl = xb_plotting_large(model_runname="gvm-run4-30m-nobldgs", var="H")
+    xbpl.read_data_xarray(var="H", t=0, rtn_time_array=True, prnt_read=True)
+    # xbpl.make_animation_imageio(tstart=900, tstop=1100, makefigs=True)
+    # xbpl.plot_timestep(t=1000, vmax=1, prnt_read=True, fname="temp.png")
     plt.show()
-
-
-
-
-
-
-
-
