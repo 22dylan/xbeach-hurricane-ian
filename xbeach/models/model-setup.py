@@ -413,9 +413,15 @@ class setup_xbeach():
 
         # -- water elevations --
         """
-            
-            Note that Don's data is provided counterclockwise around domain, 
-            whereas xbeach goes clockwise. Need to be careful with this. 
+            Note that XBeach goes clockwise around domain,
+            Don provides ADCIRC water elevation data as below. I've re-named
+             the xbeach*.out files such that they aling with the SWAN waves.
+             That is, 
+                - xbeach4.out has been renamed to xbeach3-nw.out and
+                - xbeach3.out has been renamed to xbeach4-ne.out.
+            The two offshore points for processing the forcing data are 
+            therefore pts 1 and 3. 
+            The two bayside points are 2 and 4
 
            2|---------|3
             |         |
@@ -424,17 +430,20 @@ class setup_xbeach():
             |         |
            1|---------|4 
 
-           4|---------|3
+           3|---------|4
             |         |
-            |  ADCIRC |
+            |  Waves  |
             |         |
             |         |
            1|---------|2 
 
-           3|---------|4
+
+
+        # original water elevation data.
+           4|---------|3
             |         |
-            |  SWAN   |
-            |         |
+            |  water  |
+            |  elev   |
             |         |
            1|---------|2 
 
@@ -459,9 +468,8 @@ class setup_xbeach():
         bayside_pts = [2,4]
         # -- wave forcing --
         if self.xbeach_params["wbctype"] == "swan":
-            swan_pts = [1, 3]
             print("need to clean this up.")
-            n_swan_spectra, s_, e_ = self.process_swan_output(n_header=100, n_locs=7, swan_points=swan_pts, t_start=self.t_start)
+            n_swan_spectra, s_, e_ = self.process_swan_output(n_header=100, n_locs=7, swan_points=offshore_points, t_start=self.t_start)
             for sp in offshore_points:
                 fn_out = os.path.join(self.path_to_model, "filelist{}.txt" .format(sp))
                 with open(fn_out, 'w') as f:
@@ -483,8 +491,7 @@ class setup_xbeach():
 
         elif self.xbeach_params["wbctype"]== "jonstable":
             if self.xbeach_params["nspectrumloc"] == 4:  # if more than one wave spectra provided
-                adcirc_locs = [1, 3, 4, 2]                    # adcirc/swan locations for wave forcing. 
-                for al in adcirc_locs:
+                for al in offshore_points+bayside_pts:
                     Hs_key = "Hs{}" .format(al)         # get Hs, Tp, and mainang for savepoint
                     Tp_key = "Tp{}" .format(al)
                     mainang_key = "mainang{}" .format(al)
