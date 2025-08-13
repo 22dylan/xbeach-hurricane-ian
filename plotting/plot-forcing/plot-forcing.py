@@ -7,14 +7,14 @@ import seaborn as sns
 class plot_forcing():
     def __init__(self, savepoint=4):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
-        self.focring_dir = os.path.join(self.file_dir, "..", "..", "..", "data", "forcing")
-        self.fn_forcing =  os.path.join(self.focring_dir, "xbeach{}.dat" .format(savepoint))
+        self.focring_dir = os.path.join(self.file_dir, "..", "..", "data", "forcing")
+        self.loc_keys = {1: "sw", 2:"se", 3:"nw", 4:"ne"}
+        self.fn_forcing =  os.path.join(self.focring_dir, "xbeach{}-{}.dat" .format(savepoint, self.loc_keys[savepoint]))
         self.savepoint = savepoint
         
     def plot(self, var="el", savefig=False):
         label, ylabel, color = self.var2label(var)
         df = self.frcing_to_dataframe(self.fn_forcing)
-        
         stop_idx = df.loc[df["t_sec"]==150300].index[0]
         df_trnc = df.iloc[0:stop_idx]
 
@@ -147,12 +147,17 @@ class plot_forcing():
 
 
 if __name__ == "__main__":
-    # pf = plot_forcing(savepoint=sp)
-    # pf.plot(var="wavedir", savefig=False)
 
-    for sp in [1, 2, 3, 4]:
-        pf = plot_forcing(savepoint=sp)
-        for var in ["wavedir"]:
-            pf.compare_forcing(var=var, prior_dir="2025-07-11", t_shift=41.25, savefig=True)
+    pf = plot_forcing(savepoint=3)
+    pf.plot(var="el", savefig=False)
+
+    print()
+    pf = plot_forcing(savepoint=4)
+    pf.plot(var="el", savefig=False)
+
+    # for sp in [1, 2, 3, 4]:
+    #     pf = plot_forcing(savepoint=sp)
+    #     for var in ["wavedir"]:
+    #         pf.compare_forcing(var=var, prior_dir="2025-07-11", t_shift=41.25, savefig=False)
 
     plt.show()
