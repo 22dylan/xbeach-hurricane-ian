@@ -220,6 +220,23 @@ class xb_plotting_large():
 
         return xgr, ygr
 
+
+    def var2label(self, var):
+        v2l = { "el":"Water Elevation",
+                "hs": "Significant Wave Height",
+                "Tp": "Peak Period"
+        }
+        v2y = { "el": "Water Elevation (m; ___)",
+                "hs": "Significant Wave Height (m)",
+                "Tp": "Peak Period (s)"
+        }
+        
+        c = {"el": 0, "hs": 1, "Tp": 2}
+        colors = sns.color_palette("crest", n_colors=len(c.keys()))
+        color = colors[c[var]]
+
+        return v2l[var], v2y[var], color
+
     def make_directory(self, path_out):
         if not os.path.exists(path_out):
             os.makedirs(path_out)
@@ -231,3 +248,8 @@ if __name__ == "__main__":
     # xbpl.make_animation_imageio(tstart=900, tstop=1100, makefigs=True)
     # xbpl.plot_timestep(t=1000, vmax=1, prnt_read=True, fname="temp.png")
     plt.show()
+
+
+
+
+    
