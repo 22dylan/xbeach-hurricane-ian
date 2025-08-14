@@ -9,5 +9,5 @@
 # - `run-xbeach.sh`  is this file; changes to the run directory below, then
 #    executes xbeach in parallel mode. 
 
-cd xbeach-runs-gvm/xbeach/models/run2
+cd xbeach-runs-gvm/xbeach/models/run1-5m-bldgs-12hr
 mpirun --use-hwthread-cpus xbeach

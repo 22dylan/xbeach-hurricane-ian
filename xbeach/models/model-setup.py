@@ -26,15 +26,15 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "test",
-        "t_start": 60,          # time step (hr) in adcirc/swan time to start running XBeach
-        "t_stop": 72,           # time step (hr) in adcirc/swan time to stop  running XBeach
+        "model_name": "run4-5m-bldgs-2hr",
+        "t_start": 66.25,          # time step (hr) in adcirc/swan time to start running XBeach
+        "t_stop": 68.25,           # time step (hr) in adcirc/swan time to stop  running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
-        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
-        "path_to_buildings": None,
-        # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
+        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
+        # "path_to_buildings": None,
+        "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
         "path_to_forcing": os.path.join(self.file_dir, "..", "..", "data", "forcing"),
         "forcing_files": ["xbeach1-sw.dat", "xbeach2-se.dat", "xbeach3-nw.dat", "xbeach4-ne.dat"],
         "forcing_pts_geojson": os.path.join(self.file_dir, "..", "..", "data", "forcing", "forcing-pts.geojson"),
@@ -46,7 +46,7 @@ class setup_xbeach():
 
     def set_xbeach_params(self):
         self.xbeach_params = {
-                    "xbeach_res" : 30,          # in local utm units (m here).
+                    "xbeach_res" : 5,          # in local utm units (m here).
                     
                     # -- grid input --
                     # "xori"      : 0,            # x-coordinate of origin of axis
@@ -93,6 +93,7 @@ class setup_xbeach():
                     "zs0"       : 0,                # Inital water level
                     # "paulrevere": "sea" ,             # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
                     # "tidelen"   : None,           # length of tide signal (doesn't appear to be read in xbeach)
+                    "wind":     : 1,
                     "windfile"  : "wind.txt",        # name of windfile
 
                     # -- swan wave input options
@@ -652,7 +653,7 @@ class setup_xbeach():
 
         if self.drawfigs:
             fig, ax = plt.subplots(1,1)
-            ax.plot(df["t_sec"], df["el"])
+            ax.plot(df["t_sec"]/3600, df["el"])
             ax.set_title(filename)
             if self.savefig:
                 fn = os.path.join(self.path_to_figs, "{}.png" .format(filename))
@@ -835,7 +836,7 @@ class setup_xbeach():
         numerics_input_keys = ["CFL", "eps", "front", "back", "scheme", "left", "right", "maxdtfac"]
         time_input_keys = ["dt", "tstart", "tintg", "tintm", "tintp", "tstop", "taper", "dtset"]
         general_constants = ["rho", "g"]
-        boundary_condition_keys = ["zs0file", "tideloc", "paulrevere", "tidetype", "tidelen", "zs0", "bcfile", "rt", "dtbc", "sprdthr", "wbcversion", "nspectrumloc", "windfile"]
+        boundary_condition_keys = ["zs0file", "tideloc", "paulrevere", "tidetype", "tidelen", "zs0", "bcfile", "rt", "dtbc", "sprdthr", "wbcversion", "nspectrumloc", "wind", "windfile"]
         wave_calculation_keys = ["wavemodel", "wbctype", "instat", "break", "wci", "roller", "beta", "gamma", "gammax", "alpha", "delta", "n", "maxerror", "maxiter"]
         flow_calculation_keys = ["nuh", "nuhfac", "nuhv", "umin"]
         sed_trans_calculation_keys = ["sedtrans", "dico", "D50", "D90", "rhos", "z0"]
