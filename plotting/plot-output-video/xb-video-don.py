@@ -16,7 +16,7 @@ class xb_plotting_large():
     def __init__(self, model_runname, var="H"):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
         self.model_runname = model_runname
-        self.path_to_model = os.path.join(self.file_dir, "..", "..", "xbeach", "models", self.model_runname)
+        self.path_to_model = os.path.join(self.file_dir, self.model_runname)
         self.var = var
         self.read_buildings()
 
@@ -126,13 +126,16 @@ class xb_plotting_large():
 
 
     def make_animation_imageio(self, tstart=None, tstop=None, vmax=2, makefigs=True):
+        t = self.read_time_xarray()
         if tstart == None:
-            tstart = 0
+            tstart = t[0]
         if tstop == None:
-            tstop = 30
+            tstop = t[-1]/3600
+        tstart_idx = np.argmin(np.abs(t-tstart*3600))
+        tstop_idx = np.argmin(np.abs(t-tstop*3600))
         
-        # reading data
-        # data_plot = self.data[tstart:tstop,:,:]
+        print("creating video with tstart={}hr and tstop={}hr" .format(tstart, tstop))
+        print("  found nearest time steps in time array as: tstart={} hr and tstop={}hr" .format(t[tstart_idx]/3600, t[tstop_idx]/3600))
 
         # --- making images to comprise video
         temp_dir = os.path.join(self.file_dir, "temp")
@@ -141,7 +144,7 @@ class xb_plotting_large():
                 shutil.rmtree(temp_dir)
             self.make_directory(temp_dir)
 
-            for t in range(tstart, tstop):
+            for t in range(tstart_idx, tstop_idx):
                 if t%10==0:
                     print(t)
                 fn = os.path.join(temp_dir, "f{}.png" .format(t))
@@ -151,18 +154,27 @@ class xb_plotting_large():
         # --- making video
         video_name = '{}-{}.mp4' .format(self.model_runname, self.var)
         writer = imageio.get_writer(video_name, fps=10, format='FFMPEG')
-        for step in range(tstart, tstop):
+        for step in range(tstart_idx, tstop_idx):
             fn = os.path.join(temp_dir, "f{}.png" .format(step))
             if os.path.isfile(fn):
                 image = imageio.v2.imread(fn)
                 writer.append_data(image)
         writer.close()
+        if os.path.isdir(temp_dir):
+            shutil.rmtree(temp_dir)
+            
 
     def wrld_to_grid_index(self, xgr, ygr, xy):
         idx = np.argmin(np.abs(xgr[0,:] - xy[0]))
         idy = np.argmin(np.abs(ygr[:,0] - xy[1]))        
         return (idx,idy)
 
+
+    def read_time_xarray(self):
+        fn = os.path.join(self.path_to_model, "xboutput.nc")
+        ds = xr.open_dataset(fn, chunks={"globaltime": 100})
+        time = ds["globaltime"].values
+        return time
 
     def read_data_xarray(self, var, t, prnt_read=False, rtn_time_array=False):
         fn = os.path.join(self.path_to_model, "xboutput.nc")
@@ -243,10 +255,17 @@ class xb_plotting_large():
         return path_out
 
 if __name__ == "__main__":
-    xbpl = xb_plotting_large(model_runname="gvm-run4-30m-nobldgs", var="H")
-    # xbpl.read_data_xarray(var="H", t=0, rtn_time_array=True, prnt_read=True)
-    xbpl.make_animation_imageio(tstart=900, tstop=1100, makefigs=False)
-    # xbpl.plot_timestep(t=3000, vmax=1, prnt_read=True, fname="temp.png")
+    """ to run, place this script one directory above the model that you 
+        want to make a video of.
+    """
+    # model_runname = "gvm-run4-30m-nobldgs"     # model runname
+    model_runname = "run7-5m-bldgs"              # model runname
+    var = "H"                                    # variable to plot (H=wave height; zs=water level)
+    tstart = None                                # start time for animation in hours; None starts at begining of simulation 
+    tstop = None                                 # end time for animation in hours; None ends at last time step in xboutput.nc
+
+    xbpl = xb_plotting_large(model_runname=model_runname, var=var)
+    xbpl.make_animation_imageio(tstart=tstart, tstop=tstop, makefigs=True)
     plt.show()
 
 

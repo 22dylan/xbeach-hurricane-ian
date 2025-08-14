@@ -12,24 +12,44 @@ class plot_forcing():
         self.fn_forcing =  os.path.join(self.focring_dir, "xbeach{}-{}.dat" .format(savepoint, self.loc_keys[savepoint]))
         self.savepoint = savepoint
         
-    def plot(self, var="el", savefig=False):
+    def plot(self, var="el", t_start=None, t_stop=None, savefig=False):
         label, ylabel, color = self.var2label(var)
         df = self.frcing_to_dataframe(self.fn_forcing)
-        stop_idx = df.loc[df["t_sec"]==150300].index[0]
-        df_trnc = df.iloc[0:stop_idx]
+
+        start_idx = 0
+        stop_idx = -1
+        if t_start!= None:
+            start_idx = df.loc[df["t_sec"]==t_start*3600].index[0]
+        if t_stop!=None:
+            stop_idx = df.loc[df["t_sec"]==t_stop*3600].index[0]
+        
+        df_trnc = df.iloc[start_idx:stop_idx]
 
         fig, ax = plt.subplots(1,1, figsize=(5,3))
-        ax.plot(df["t_hr"], df[var], color="k", lw=1.5, label=label)
-        # ax.plot(df_trnc["t_hr"], df_trnc[var], color="#ff5370", lw=3, label="Truncated Elevation")
+        
+        ls_full = "-"
+        lw_full = 1.5
+        if (t_start!=None) or (t_stop!=None):
+            ax.plot(df_trnc["t_hr"], df_trnc[var], 
+                    color="#ff5370", 
+                    lw=3, 
+                    label="Truncated Elevation", 
+                    zorder=1)
+            ls_full = "-."
+            lw_full = 0.75
+
+        ax.plot(df["t_hr"], df[var], color="k", lw=lw_full, ls=ls_full, label=label, zorder=0)
+
 
         # ax.plot(df["t_sec"], df["el"], color='dodgerblue', lw=1.5, label="Water Elevation")
         ax.legend()
         ax.set_xlabel("Time (Hours)")
         ax.set_ylabel(ylabel)
-        ax.set_title("{}-sp{}-{}" .format(var, sp, self.loc_keys[sp]))
+        ax.set_title("{}-sp{}-{}" .format(var, self.savepoint, self.loc_keys[self.savepoint]))
+
 
         if savefig:
-            fn = "{}-sp{}-{}.png" .format(var, sp, self.loc_keys[sp])
+            fn = "{}-sp{}-{}.png" .format(var, self.savepoint, self.loc_keys[self.savepoint])
             plt.savefig(fn,
                         transparent=False, 
                         dpi=500,
@@ -148,19 +168,11 @@ class plot_forcing():
 
 
 if __name__ == "__main__":
+    pf = plot_forcing(savepoint=1)
+    pf.plot(var="hs", t_start=60, t_stop=72, savefig=False)
 
-    for sp in [1, 2, 3, 4]:
-        for var in ["el", "hs", "Tp", "wavedir"]:
-            pf = plot_forcing(savepoint=sp)
-            pf.plot(var=var, savefig=True)
+    pf = plot_forcing(savepoint=3)
+    pf.plot(var="hs", t_start=60, t_stop=72, savefig=False)
 
-    # print()
-    # pf = plot_forcing(savepoint=4)
-    # pf.plot(var="el", savefig=False)
-
-    # for sp in [1, 2, 3, 4]:
-    #     pf = plot_forcing(savepoint=sp)
-    #     for var in ["wavedir"]:
-    #         pf.compare_forcing(var=var, prior_dir="2025-07-11", t_shift=41.25, savefig=False)
 
     plt.show()

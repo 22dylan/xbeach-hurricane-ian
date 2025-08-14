@@ -25,12 +25,13 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "gvm-run8-30m-nobldgs",
-        "t_start": 40,        # what time step (hr) from Don's simulations to start running XBeach
+        "model_name": "gvm-run9-30m-nobldgs",
+        "t_start": 60,          # time step (hr) in adcirc/swan time to start running XBeach
+        "t_stop": 72,           # time step (hr) in adcirc/swan time to stop  running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
+        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
-        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
         "path_to_buildings": None,
         # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
         "path_to_forcing": os.path.join(self.file_dir, "..", "..", "data", "forcing"),
@@ -76,7 +77,7 @@ class setup_xbeach():
                     "tintg"     : 60,           # interval time of global output
                     "tintm"     : 400,          # interval time of mean, var, max, min output
                     "tintp"     : 60,           # interval time of point/runup gauge output
-                    "tstop"     : 200000,       # end time seconds
+                    # "tstop"     : 200000,       # end time seconds
                     "taper"     : 200,          # Spin-up time of wave boundary conditions, in morphological time
                     # "dtset"     : 0.5,          # Fixed timestep, overrides use of cfl
 
@@ -86,10 +87,10 @@ class setup_xbeach():
 
                     # -- boundary conditions --
                     "zs0file"   : "water_elev.dat", # Name of tide boundary condition series
-                    "tideloc"   : 2,                # Number of corner points on which a tide time series is specified
+                    "tideloc"   : 4,                # Number of corner points on which a tide time series is specified
                     # "tidetype"  : "velocity",     # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
                     "zs0"       : 0,                # Inital water level
-                    "paulrevere": "sea" ,             # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
+                    # "paulrevere": "sea" ,             # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
                     # "tidelen"   : None,           # length of tide signal (doesn't appear to be read in xbeach)
                     
 
@@ -154,6 +155,7 @@ class setup_xbeach():
         input_vals = self.input_vals()
         self.set_model_name(input_vals["model_name"])
         self.set_t_start(input_vals["t_start"])
+        self.set_t_stop(input_vals["t_stop"])
         self.set_path_to_dem(input_vals["path_to_dem"])
         self.set_path_to_domain(input_vals["path_to_domain"])
         self.set_path_to_buildings(input_vals["path_to_buildings"])
@@ -171,12 +173,10 @@ class setup_xbeach():
         self.make_directory(self.path_to_model)
 
     def set_t_start(self, val):
-        """ this t_start tells this script where in Don's output to start 
-            running XBeach. 
-            t_start units: hours
-            Don's model runs from t=0 hr to ~90 hr.
-        """
         self.t_start = val
+    
+    def set_t_stop(self, val):
+        self.t_stop = val
 
     def set_path_to_dem(self, val=None):
         self.path_to_dem = val
@@ -393,7 +393,7 @@ class setup_xbeach():
         frcg_pts_gdf = self.read_forcing_locs()
         for file_i, file in enumerate(self.forcing_files):
             fn = os.path.join(self.path_to_forcing, file)
-            df_ = self.frcing_to_dataframe(fn, file, t_start=self.t_start)
+            df_ = self.frcing_to_dataframe(fn, file, t_start=self.t_start, t_stop=self.t_stop)
             if file_i == 0:
                 frcng_df = df_.copy()
                 frcng_df["el{}-{}" .format(file_i+1, self.forcing_loc_keys[file_i+1])] = df_["el"]
@@ -479,7 +479,7 @@ class setup_xbeach():
         offshore_points = [1,3]
         bayside_pts = [2,4]
         if self.xbeach_params["wbctype"] == "swan":     # if wave forcing from swan spectra
-            s_, e_ = self.process_swan_output(n_header=100, n_locs=7, swan_points=offshore_points, t_start=self.t_start)
+            s_, e_ = self.process_swan_output(n_header=100, n_locs=7, swan_points=offshore_points, t_start=self.t_start, t_stop=self.t_stop)
             
             # determine which swan spectra points to use. 
             if self.xbeach_params["nspectrumloc"] == 1:
@@ -542,7 +542,7 @@ class setup_xbeach():
 
         return frcng_df
 
-    def frcing_to_dataframe(self, fn, filename, n_header=3, n_var=7, t_start=0):
+    def frcing_to_dataframe(self, fn, filename, n_header=3, n_var=7, t_start=0, t_stop=-1):
         t, el, wx, wy, hs, Tp, wavedir = [], [], [], [], [], [], [],
         with open(fn,'r') as f:
             for cnt, line in enumerate(f.readlines()):
@@ -620,7 +620,8 @@ class setup_xbeach():
             del df["t"]
             df["t"] = np.linspace(0, (len(df)-1)*dt/3600, len(df))
             df["t_sec"] = np.linspace(0, (len(df)-1)*dt, len(df))
-
+        if t_stop != None:
+            df = df.loc[df["t"]<=(t_stop-t_start)]
 
         if self.drawfigs:
             fig, ax = plt.subplots(1,1)
@@ -637,7 +638,7 @@ class setup_xbeach():
 
         return df
     
-    def process_swan_output(self, n_header, n_locs, swan_points, t_start):
+    def process_swan_output(self, n_header, n_locs, swan_points, t_start, t_stop):
         """
         function to process swan output from Don into appropriate format 
           for XBeach.
@@ -656,6 +657,7 @@ class setup_xbeach():
             t_start: what time step in SWAN time to start processing this data 
               from. For example, t_start=30 gets rid of first 30 hours of SWAN
               data.
+            t_stop: time step to stop at in hours.
         Returns:
             t_start_step: this is the start step as an index.
             t_end_step: this is the end step as an index. 
@@ -692,10 +694,11 @@ class setup_xbeach():
         # each swan file represents 15 minutes.
         # swan_dir_out = self.make_directory(os.path.join(self.path_to_model, "swan")) 
         t_start_step = int(t_start*60/15)
-        t_end_step = list(swan_spectra[swan_loc_cnt].keys())[-1]
+        t_stop_step  = int(t_stop*60/15)
+        # t_end_step = list(swan_spectra[swan_loc_cnt].keys())[-1]
         for spectra in swan_points:
             n_swan_spectra = 0
-            for time in range(t_start_step,t_end_step):
+            for time in range(t_start_step,t_stop_step+1):
                 n_swan_spectra += 1
                 if time == 0:
                     continue
@@ -720,7 +723,7 @@ class setup_xbeach():
                     for l in swan_spectra[spectra-1][time]:
                         f.write(l)
 
-        return t_start_step, t_end_step
+        return t_start_step, t_stop_step
 
     def cartesian_to_nautical_angle(self, deg):
         """ converting from cartesian to nautical angles for xbeach input
@@ -774,9 +777,10 @@ class setup_xbeach():
         if self.xbeach_params["struct"]==0:
             os.remove(os.path.join(self.path_to_model, "ne_bed.dep"))
         
-        if self.xbeach_params["tstop"] == None:
-            self.xbeach_params["tstop"] = elev_df.iloc[-1]["t_sec"].astype(int)
-        
+        if "tstop" not in self.xbeach_params:
+            # self.xbeach_params["tstop"] = elev_df.iloc[-1]["t_sec"].astype(int)
+            self.xbeach_params["tstop"] = (self.t_stop - self.t_start)*3600
+
         if self.xbeach_params["vardx"] == 0:
             # -- setting dx/dy from xbeach_res
             self.xbeach_params["dx"] = self.xbeach_params["xbeach_res"]
