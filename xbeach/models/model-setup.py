@@ -1,5 +1,6 @@
 import os, shutil
 import sys
+import math
 import numpy as np
 from datetime import datetime
 from scipy import interpolate
@@ -25,7 +26,7 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "gvm-run9-30m-nobldgs",
+        "model_name": "test",
         "t_start": 60,          # time step (hr) in adcirc/swan time to start running XBeach
         "t_stop": 72,           # time step (hr) in adcirc/swan time to stop  running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
@@ -92,7 +93,7 @@ class setup_xbeach():
                     "zs0"       : 0,                # Inital water level
                     # "paulrevere": "sea" ,             # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
                     # "tidelen"   : None,           # length of tide signal (doesn't appear to be read in xbeach)
-                    
+                    "windfile"  : "wind.txt",        # name of windfile
 
                     # -- swan wave input options
                     "dthetaS_XB": 0,                # The (counter-clockwise) angle in the degrees needed to rotate from the x-axis in swan to the x-axis pointing east
@@ -385,6 +386,17 @@ class setup_xbeach():
         gdf = gdf.to_crs(self.local_epsg)
         return gdf
 
+    def get_wind_angles(self, x, y):
+        """
+        Calculates the angle of a 2D vector from the x-axis in a counter-clockwise direction
+        and returns it in the range [0, 360) degrees.
+        """
+        angles_rad = np.arctan2(y, x)
+        angles_deg = np.degrees(angles_rad)
+        # Convert negative angles to the [0, 360) range
+        angles_deg[angles_deg < 0] += 360
+        return angles_deg
+
     def setup_forcing(self, grid_df):
         """ first reading in water elevations data from xbeach*.out.
             if using swan spectra, then we delete the wave information 
@@ -398,6 +410,14 @@ class setup_xbeach():
                 frcng_df = df_.copy()
                 frcng_df["el{}-{}" .format(file_i+1, self.forcing_loc_keys[file_i+1])] = df_["el"]
                 frcng_df["windv"] = np.sqrt(np.square(frcng_df["wx"]) + np.square(frcng_df["wy"]))
+                windth = self.get_wind_angles(frcng_df["wx"].values, frcng_df["wy"].values)
+                windth_nautical = []
+                for w_ in windth:
+                    w_ = self.cartesian_to_nautical_angle(w_)
+                    w_ = self.nautical_to_xbeach_angle(w_, self.alfa)
+                    windth_nautical.append(w_)
+                frcng_df["windth"] = windth_nautical
+
                 if self.xbeach_params["wbctype"] != "swan":
                     frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
                     frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
@@ -413,6 +433,13 @@ class setup_xbeach():
                     frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
                     frcng_df["mainang{}" .format(file_i+1)] = df_["mainang"]
 
+
+        # -- winds
+        # writing water elevation data to output file
+        wind_df = frcng_df[["t_sec", "windv", "windth"]]
+        fn_out = os.path.join(self.path_to_model, self.xbeach_params["windfile"])
+        wind_df.to_csv(fn_out, sep="\t", index=None, header=None, float_format='%10.3f')
+             
         # -- water elevations --
         """
             Note that XBeach goes clockwise around domain,
@@ -808,7 +835,7 @@ class setup_xbeach():
         numerics_input_keys = ["CFL", "eps", "front", "back", "scheme", "left", "right", "maxdtfac"]
         time_input_keys = ["dt", "tstart", "tintg", "tintm", "tintp", "tstop", "taper", "dtset"]
         general_constants = ["rho", "g"]
-        boundary_condition_keys = ["zs0file", "tideloc", "paulrevere", "tidetype", "tidelen", "zs0", "bcfile", "rt", "dtbc", "sprdthr", "wbcversion", "nspectrumloc"]
+        boundary_condition_keys = ["zs0file", "tideloc", "paulrevere", "tidetype", "tidelen", "zs0", "bcfile", "rt", "dtbc", "sprdthr", "wbcversion", "nspectrumloc", "windfile"]
         wave_calculation_keys = ["wavemodel", "wbctype", "instat", "break", "wci", "roller", "beta", "gamma", "gammax", "alpha", "delta", "n", "maxerror", "maxiter"]
         flow_calculation_keys = ["nuh", "nuhfac", "nuhv", "umin"]
         sed_trans_calculation_keys = ["sedtrans", "dico", "D50", "D90", "rhos", "z0"]
