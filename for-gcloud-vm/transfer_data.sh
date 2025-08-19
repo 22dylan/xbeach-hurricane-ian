@@ -12,8 +12,8 @@ ZONE="us-west1-a"   # large vm
 
 # vm to local; plotting results
 # FROMPATH="drs@xb-vm-large:~/plotting/plot-transect/ytrans5640-t29.png"
-# FROMPATH="drs@xb-vm-large:~/plotting/plot-output/temp.png"
-FROMPATH="drs@xb-vm-large:~/plotting/plot-output/run5-5m-bldgs-6hr-tideloc1-largedomain-H.mp4"
+FROMPATH="drs@xb-vm-large:~/plotting/plot-output/temp/f10.png"
+# FROMPATH="drs@xb-vm-large:~/plotting/plot-output/run5-5m-bldgs-6hr-tideloc1-largedomain-H.mp4"
 # FROMPATH="drs@xb-vm-large:~/plotting/plot-output/frun3-30m-bldgs-12hr-tideloc1-H.mp4"
 TOPATH="/Users/drs/Desktop"
 
