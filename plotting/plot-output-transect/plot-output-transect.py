@@ -1,4 +1,9 @@
-
+import os
+import xarray as xr
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class plot_transect():
@@ -9,8 +14,20 @@ class plot_transect():
         self.path_to_model = os.path.join(self.file_dir, "..", "..", "xbeach", "models", self.model_runname)
         self.var = var
         self.xgr, self.ygr = self.read_grid()
+
+
+    def var2label(self, var):
+        if var == "H":
+            ylabel = "Wave Height (m)"
+        elif var == "zs":
+            ylabel = "Water Level (m)"
+        elif var == "zs0":
+            ylabel = "zs0: Water Level - Surge/Tide Alone (m)"
+        elif var=="zs1":
+            ylabel = "zs1: Water Level - No Surge/Tide"
+        return ylabel
     
-    def read_data_xarray(self, var, t, prnt_read=False, rtn_time_array=False):
+    def read_data_xarray_transect(self, var, idy, t, prnt_read=False, rtn_time_array=False):
         fn = os.path.join(self.path_to_model, "xboutput.nc")
         ds = xr.open_dataset(fn, chunks={"globaltime": 100})
         if prnt_read:
@@ -18,13 +35,15 @@ class plot_transect():
             print(ds)
             print("\n\n")
         
-        slice_data = ds[var].isel(globaltime=slice(t,t+1))
+        # slice_data = ds[var].isel(globaltime=slice(t,t+1))
+        slice_data = ds[var][t,idy,:]
+
         if rtn_time_array:
             time = ds["globaltime"].values
-            # print("Last time step: {} hr." .format(time[-1]/60/60))
-            return slice_data.values[0,:,:], time
+            return slice_data.values, time
         else:
-            return slice_data.values[0,:,:]
+            return slice_data.values
+
 
     def read_grid(self):
         fn = os.path.join(self.path_to_model, "x.grd")
@@ -66,32 +85,35 @@ class plot_transect():
 
         return xgr, ygr
 
-    def plot_water_level_transect(self, y_trans, ts, plot_trans=True, drawdomain=False, savefig=False):
+    def plot_water_level_transect(self, y_trans, ts, plot_bed=True, drawdomain=False, savefig=False):
         fig, ax = plt.subplots(1,1,figsize=(10,4))
         colors = sns.color_palette("viridis")
-        if plot_trans == True:
-            trns, _ = self.read_data("zb")
-
+        idy = np.argmin(np.abs(self.ygr[:,0] - y_trans))
+        if plot_bed == True:
+            bed = self.read_data_xarray_transect(var="zb", idy=idy, t=0, prnt_read=False)
+ 
         # get data for variable
         cnt = 0
         for t in ts:
-            idy = np.argmin(np.abs(self.ygr[:,0] - y_trans))
-            data_ = self.data[t,idy,:]
+            data_ = self.read_data_xarray_transect(var=self.var, idy=idy, t=t, prnt_read=False)
+            print(data_)
+            
+            # data_ = self.data[t,idy,:]
             data_[data_<-99999] = 0
-            _, ylabel, c = self.var2label("el")
+            ylabel = self.var2label(self.var)
             c = colors[cnt]
 
             ax.plot(data_, color=c, lw=2)
-            if plot_trans:
-                trns_ = trns[t, idy,:]
-                ax.plot(trns_, 'k')
+            if plot_bed:
+                # trns_ = trns[t, idy,:]
+                ax.plot(bed, 'k')
             cnt += 1
 
         ax.set_xlabel("x")
         ax.set_ylabel(ylabel)
         ax.set_xlim([0,np.shape(data_)[0]])
-        ax.set_title("water elevation at transect: {}" .format(y_trans))
-        if plot_trans:
+        ax.set_title("water elevation at y={} m" .format(y_trans))
+        if plot_bed:
             ylim = ax.get_ylim()
             ax.set_ylim([ylim[0], 5])
 
@@ -121,10 +143,7 @@ class plot_transect():
 
             y = self.ygr[y_trans,0]
             ax.axhline(y=y, xmin=0, xmax=np.shape(data_plot)[1], color='k', lw=2)
-            # for xy in xys:
-            #     ax.scatter(xy[0], xy[1], color=colors[cnt],s=50)
-            #     ax.annotate("{}" .format(cnt), (xy[0], xy[1]))
-            #     cnt += 1
+
 
             if savefig:
                 fn = "obs-trns.png"
@@ -136,8 +155,9 @@ class plot_transect():
                             )
         
 if __name__ == "__main__":
-    pt = plot_transect("gvm-run3-30m-nobldgs", var="H")
-    pt.plot_water_level_transect(y_trans=100, ts=[40])
+    pt = plot_transect("frun1-30m-bldgs-12hr-tideloc4", var="zs0")
+    # pt.plot_water_level_transect(y_trans=10000, ts=[400], drawdomain=False)
+    pt.plot_water_level_transect(y_trans=5640, ts=[400], drawdomain=False, savefig=True)
 
-
+    plt.show()
 

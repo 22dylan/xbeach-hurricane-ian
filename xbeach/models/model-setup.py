@@ -26,15 +26,16 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "run4-5m-bldgs-2hr",
-        "t_start": 66.25,          # time step (hr) in adcirc/swan time to start running XBeach
-        "t_stop": 68.25,           # time step (hr) in adcirc/swan time to stop  running XBeach
+        "model_name": "run7-5m-nobldgs-6hr-tideloc4",
+        "t_start": 63.25,          # time step (hr) in adcirc/swan time to start running XBeach
+        "t_stop": 69.25,           # time step (hr) in adcirc/swan time to stop  running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
+        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
-        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
-        # "path_to_buildings": None,
-        "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
+        "path_to_buildings": None,
+        # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
+        # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs_estero.geojson"),
         "path_to_forcing": os.path.join(self.file_dir, "..", "..", "data", "forcing"),
         "forcing_files": ["xbeach1-sw.dat", "xbeach2-se.dat", "xbeach3-nw.dat", "xbeach4-ne.dat"],
         "forcing_pts_geojson": os.path.join(self.file_dir, "..", "..", "data", "forcing", "forcing-pts.geojson"),
@@ -63,7 +64,7 @@ class setup_xbeach():
                     "dtheta_s"  : 10,           # Directional in case of stationary refraction; not used in stationary mode
 
                     # -- numerics input --
-                    "CFL"       : 0.5,          # Maximum courant-friedrichs-lewy number
+                    "CFL"       : 0.5,            # Maximum courant-friedrichs-lewy number
                     # "eps"       : 0.001,        # Threshold water depth above which cells are considered wet
                     # "front"     : "wlevel",     # Switch for seaward flow boundary (abs_1d, abs_2d, wall, wlevel, nonh_1d, waveflume); switches to abs_1d for
                     # "back"      : "wlevel",     # Switch for boundary at bay side (wall, abs_1d, abs_2d, wlevel)   
@@ -71,7 +72,6 @@ class setup_xbeach():
                     # "left"      : "neumann",    # Switch for lateral boundary at ny+1 (neumann, wall, no_advec, neumann_v, abs_1d)
                     # "right"     : "neumann",    # Switch for lateral boundary at 0    (neumann, wall, no_advec, neumann_v, abs_1d)
                     # "maxdtfac"     : 500,    # Maximum increase/decrease in time stp in explosion prevention mechanism
-
 
                     # -- time input --
                     "tstart"    : 0,            # Start time of output, in morphological time
@@ -89,11 +89,11 @@ class setup_xbeach():
                     # -- boundary conditions --
                     "zs0file"   : "water_elev.dat", # Name of tide boundary condition series
                     "tideloc"   : 4,                # Number of corner points on which a tide time series is specified
-                    # "tidetype"  : "velocity",     # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
-                    "zs0"       : 0,                # Inital water level
+                    # "tidetype"  : "instant",        # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
+                    # "zs0"       : 0,                # Inital water level
                     # "paulrevere": "sea" ,             # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
                     # "tidelen"   : None,           # length of tide signal (doesn't appear to be read in xbeach)
-                    "wind":     : 1,
+                    "wind"      : 1,
                     "windfile"  : "wind.txt",        # name of windfile
 
                     # -- swan wave input options
@@ -286,7 +286,7 @@ class setup_xbeach():
 
         if self.drawfigs:
             # fig, ax = plt.subplots(1,1, figsize=(8,1))
-            fig, ax = plt.subplots(1,1, figsize=(5,8))
+            fig, ax = plt.subplots(1,1, figsize=(3,8))
             ax.pcolor(xgr,ygr,zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             # ax.imshow(zgr, origin="lower", vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             ax.set_xlabel("x (m)")
@@ -346,7 +346,7 @@ class setup_xbeach():
                 zgr[grid_["idy"], grid_["idx"]] = struct_height
 
         if self.drawfigs:
-            fig, ax = plt.subplots(1,1, figsize=(4,8))
+            fig, ax = plt.subplots(1,1, figsize=(3,8))
             ax.pcolor(xgr,ygr,zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             ax.set_xlabel("x (m)")
             ax.set_ylabel("y (m)", rotation=90)
@@ -359,7 +359,7 @@ class setup_xbeach():
                             bbox_inches="tight",
                             pad_inches=0.1,
                             )
-
+        
         # setting up non-erodible structure grid
         if self.xbeach_params["morphology"] == 1:
             if self.xbeach_params["struct"] == 1:
