@@ -26,14 +26,14 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "run10-5m-nobldgs-6hr-tideloc1-tt2-morph",
+        "model_name": "run11-5m-nobldgs-6hr-tideloc1-tt2-morph",
         "t_start": 63.25,          # time step (hr) in adcirc/swan time to start running XBeach
         "t_stop": 69.25,           # time step (hr) in adcirc/swan time to stop  running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
+        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
-        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain2-epsg32617.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain2-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-transects-epsg32617.geojson"),
         "path_to_buildings": None,
         # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
@@ -66,7 +66,7 @@ class setup_xbeach():
                     "dtheta_s"  : 10,           # Directional in case of stationary refraction; not used in stationary mode
 
                     # -- numerics input --
-                    "CFL"       : 0.5,          # Maximum courant-friedrichs-lewy number
+                    # "CFL"       : 0.5,          # Maximum courant-friedrichs-lewy number
                     # "eps"       : 0.001,        # Threshold water depth above which cells are considered wet
                     # "front"     : "wlevel",     # Switch for seaward flow boundary (abs_1d, abs_2d, wall, wlevel, nonh_1d, waveflume); switches to abs_1d for
                     # "back"      : "wlevel",     # Switch for boundary at bay side (wall, abs_1d, abs_2d, wlevel)   
@@ -83,7 +83,7 @@ class setup_xbeach():
                     "tintp"     : 60,           # interval time of point/runup gauge output
                     # "tstop"     : 200000,       # end time seconds
                     "taper"     : 200,          # Spin-up time of wave boundary conditions, in morphological time
-                    # "dtset"     : 0.5,          # Fixed timestep, overrides use of cfl
+                    "dtset"     : 0.1,          # Fixed timestep, overrides use of cfl
 
                     # -- general constants --
                     # "rho"   : 1025,             # Density of water
