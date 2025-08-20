@@ -1,5 +1,9 @@
-
-
+import os
+import pandas as pd
+import numpy as np
+import xarray as xr
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class plot_transect():
     """docstring for xb_plotting_pt"""
@@ -66,29 +70,30 @@ class plot_transect():
 
         return xgr, ygr
 
-    def plot_water_level_transect(self, y_trans, ts, plot_trans=True, drawdomain=False, savefig=False):
+    def plot_water_level_transect(self, y_trans, ts, plot_trans=True, drawdomain=False, fname=None):
         fig, ax = plt.subplots(1,1,figsize=(10,4))
         colors = sns.color_palette("viridis")
         if plot_trans == True:
-            trns, _ = self.read_data("zb")
+            trns = self.read_data_xarray(var="zb", t=0)
 
         # get data for variable
         cnt = 0
         for t in ts:
             idy = np.argmin(np.abs(self.ygr[:,0] - y_trans))
-            data_ = self.data[t,idy,:]
+            data = self.read_data_xarray(var=self.var, t=t)
+            data_ = data[idy,:]
             data_[data_<-99999] = 0
-            _, ylabel, c = self.var2label("el")
+            # _, ylabel, c = self.var2label("el")
             c = colors[cnt]
 
             ax.plot(data_, color=c, lw=2)
             if plot_trans:
-                trns_ = trns[t, idy,:]
+                trns_ = trns[idy,:]
                 ax.plot(trns_, 'k')
             cnt += 1
 
         ax.set_xlabel("x")
-        ax.set_ylabel(ylabel)
+        # ax.set_ylabel(ylabel)
         ax.set_xlim([0,np.shape(data_)[0]])
         ax.set_title("water elevation at transect: {}" .format(y_trans))
         if plot_trans:
@@ -96,9 +101,9 @@ class plot_transect():
             ax.set_ylim([ylim[0], 5])
 
 
-        if savefig == True:
-            fn = "ytrans{}-t{}.png" .format(y_trans, t)
-            plt.savefig(fn,
+        if fname!=None:
+            # fn = "ytrans{}-t{}.png" .format(y_trans, t)
+            plt.savefig(fname,
                         transparent=False, 
                         dpi=300,
                         bbox_inches='tight',
@@ -136,8 +141,9 @@ class plot_transect():
                             )
         
 if __name__ == "__main__":
-    pt = plot_transect("gvm-run3-30m-nobldgs", var="H")
-    pt.plot_water_level_transect(y_trans=100, ts=[40])
+    pt = plot_transect("run6-5m-bldgs-3hr-tideloc4", var="zs")
+    pt.plot_water_level_transect(y_trans=500, ts=[100], fname="temp.png")
 
 
 
+    plt.show()

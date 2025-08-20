@@ -259,7 +259,7 @@ class xb_plotting_large():
         return path_out
 
 if __name__ == "__main__":
-    xbpl = xb_plotting_large(model_runname="gvm-run4-30m-nobldgs", var="H")
+    xbpl = xb_plotting_large(model_runname="frun1-30m-bldgs-12hr-tideloc4", var="H")
     # xbpl.read_data_xarray(var="H", t=0, rtn_time_array=True, prnt_read=True)
     # xbpl.make_animation_imageio(tstart=900, tstop=1100, makefigs=False)
     xbpl.plot_timestep(t_hr=1.5, vmax=1, prnt_read=True, fname="temp.png")

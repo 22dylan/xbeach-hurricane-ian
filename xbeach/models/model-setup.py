@@ -26,15 +26,18 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "run4-5m-bldgs-2hr",
-        "t_start": 66.25,          # time step (hr) in adcirc/swan time to start running XBeach
-        "t_stop": 68.25,           # time step (hr) in adcirc/swan time to stop  running XBeach
+        "model_name": "run10-5m-nobldgs-6hr-tideloc1-tt2-morph",
+        "t_start": 63.25,          # time step (hr) in adcirc/swan time to start running XBeach
+        "t_stop": 69.25,           # time step (hr) in adcirc/swan time to stop  running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
-        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
-        # "path_to_buildings": None,
-        "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
+        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain2-epsg32617.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-transects-epsg32617.geojson"),
+        "path_to_buildings": None,
+        # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
+        # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs_estero.geojson"),
         "path_to_forcing": os.path.join(self.file_dir, "..", "..", "data", "forcing"),
         "forcing_files": ["xbeach1-sw.dat", "xbeach2-se.dat", "xbeach3-nw.dat", "xbeach4-ne.dat"],
         "forcing_pts_geojson": os.path.join(self.file_dir, "..", "..", "data", "forcing", "forcing-pts.geojson"),
@@ -88,16 +91,16 @@ class setup_xbeach():
 
                     # -- boundary conditions --
                     "zs0file"   : "water_elev.dat", # Name of tide boundary condition series
-                    "tideloc"   : 4,                # Number of corner points on which a tide time series is specified
-                    # "tidetype"  : "velocity",     # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
-                    "zs0"       : 0,                # Inital water level
+                    "tideloc"   : 1,                # Number of corner points on which a tide time series is specified
+                    "tidetype"  : "instant",     # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
+                    # "zs0"       : 0,                # Inital water level
                     # "paulrevere": "sea" ,             # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
                     # "tidelen"   : None,           # length of tide signal (doesn't appear to be read in xbeach)
-                    "wind":     : 1,
+                    "wind"      : 1,
                     "windfile"  : "wind.txt",        # name of windfile
 
                     # -- swan wave input options
-                    "dthetaS_XB": 0,                # The (counter-clockwise) angle in the degrees needed to rotate from the x-axis in swan to the x-axis pointing east
+                    # "dthetaS_XB": 0,                # The (counter-clockwise) angle in the degrees needed to rotate from the x-axis in swan to the x-axis pointing east
                     "wbctype"   : "swan",           # swan wave input
                     "bcfile"    : "loclist.txt",    # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
                     "nspectrumloc": 2,              # number of wave spectra in offshore boundary
@@ -131,7 +134,7 @@ class setup_xbeach():
                     # "umin"     : 0.0,
 
                     # -- sediment transport options --
-                    "sedtrans": 0,      # Turn on sediment transport
+                    "sedtrans": 1,      # Turn on sediment transport
                     # "dico"  : 1,
                     # "D50"   : 0.0002,
                     # "D90"   : 0.0003,
@@ -139,7 +142,7 @@ class setup_xbeach():
                     # "z0"    : 0.006,
 
                     # -- morphologic opttions --
-                    "morphology": 0,            # Turn on morphology
+                    "morphology": 1,            # Turn on morphology
                     "struct"    : 0,            # turn on hard structures (1) or not (0)
                     # "ne_layer"  : "ne_layer.grd", # filename for non-erodible layer
                     # "morfac"   : 0,
@@ -329,12 +332,19 @@ class setup_xbeach():
                 values 10 indicate that up to 10m of erosion is possible. 
         """
         print("need to confirm this works with variable grid.")
+        zgr_original = np.copy(zgr)
         nesgr = np.ones_like(zgr)
         if self.path_to_buildings != None:
             gdf_buildings = gpd.read_file(self.path_to_buildings)
             gdf_buildings.to_crs(self.local_epsg, inplace=True)
+            # # simplifying geometry
+            # gdf_buildings["geometry"] = gdf_buildings["geometry"].convex_hull
+            # gdf_buildings["geometry"] = gdf_buildings["geometry"].simplify(tolerance=5)
+            # gdf_buildings["geometry"] = gdf_buildings["geometry"].offset_curve(distance=-1)
+
         else:
             return zgr, nesgr
+
         grid_df = gpd.GeoDataFrame(grid_df, geometry=gpd.points_from_xy(grid_df.pt_x_wrld, grid_df.pt_y_wrld), crs=self.local_epsg)
 
         # loop through each buildling and finds points in building geom; change elevation to 99
@@ -344,6 +354,30 @@ class setup_xbeach():
             if gdf_temp.sum()>0:        # if there is a grid cell with a building on.
                 grid_ = grid_df.loc[gdf_temp]
                 zgr[grid_["idy"], grid_["idx"]] = struct_height
+
+        cleanup_buildings = True
+        if cleanup_buildings:
+            from scipy.ndimage import generate_binary_structure
+            from scipy.ndimage import binary_opening
+
+            print("look into morphologic opening/closing")
+            # https://www.google.com/search?sa=X&sca_esv=ac435d3c33422e6e&udm=2&fbs=AIIjpHxU7SXXniUZfeShr2fp4giZ1Y6MJ25_tmWITc7uy4KIepxPkVkiyvcVCXrRQKSfjcQaZDIJ_rZS9U2lXSeywwkx2RqfGgrn_WzrZShdTAOSEZYi0LXbNCA9W0WLzi4w5V2DCag7TLy809cB3MnvELTUMe9mejS7pUq3-GZJSAmkDnjlkYEclcgtNjkPKQp8uxsgk0k6ehKsZSeCXhVOMOizqhV8dQ&q=morphological+opening+and+closing&ved=2ahUKEwiY6dTE-JePAxUcGDQIHXGzJrsQtKgLegQIFBAB&biw=1358&bih=797&dpr=2#vhid=Q2OxxoYA2c-saM&vssid=mosaic
+            # https://homepages.inf.ed.ac.uk/rbf/HIPR2/open.htm
+            mask = (zgr == struct_height)
+
+            # Define a structuring element to check the neighborhood.
+            # A 3x3 square is a good default.
+            struct = generate_binary_structure(2, 2)
+
+            # Step 2: Perform morphological opening on the mask
+            # 'iterations' can be adjusted to remove larger isolated groups
+            cleaned_mask = binary_opening(mask, structure=struct, iterations=1)
+
+            # Step 3: Apply the cleaned mask to the original array
+            cleaned_arr = zgr.copy()
+            cleaned_arr[mask & ~cleaned_mask] = zgr_original[mask & ~cleaned_mask] # Or any value to replace with
+            zgr = cleaned_arr.copy()
+            print(np.max(zgr))
 
         if self.drawfigs:
             fig, ax = plt.subplots(1,1, figsize=(4,8))
@@ -364,7 +398,7 @@ class setup_xbeach():
         if self.xbeach_params["morphology"] == 1:
             if self.xbeach_params["struct"] == 1:
                 nesgr = np.zeros(np.shape(zgr))
-                nesgr[zgr!=struct_height] = struct_height
+                nesgr[zgr!=struct_height] = 10
                 if self.drawfigs:
                     fig, ax = plt.subplots(1,1, figsize=(4,8))
                     ax.pcolor(xgr, ygr, nesgr, vmin=0, vmax=struct_height)
@@ -946,7 +980,8 @@ class setup_xbeach():
         
         sides = np.array(sides)
         
-        # note: the two lines below are used for small domain.
+        # # note: the two lines below are used for small domain.
+        # print("Temporarilty using this")
         # w = sides[np.argsort(sides)][2:]        # width  is defined here as crossshore distance
         # l = sides[np.argsort(sides)][0:2]       # length is defined here as alongshore distance
         
