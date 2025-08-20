@@ -11,8 +11,8 @@ ZONE="us-west1-a"   # large vm
 # TOPATH="$GDRIVEPATH/xbeach/models/run4-bldgs/"
 
 # # vm to local; plotting results
-# FROMPATH="drs@xb-vm-large:~/plotting/plot-output/run9-5m-nobldgs-6hr-tideloc1-tt2-L-morph-H.mp4"
-FROMPATH="drs@xb-vm-large:~/plotting/plot-output/temp.png"
+FROMPATH="drs@xb-vm-large:~/plotting/plot-output/run10-5m-nobldgs-6hr-tideloc1-tt2-morph-H.mp4"
+# FROMPATH="drs@xb-vm-large:~/plotting/plot-output/temp.png"
 # # FROMPATH="drs@xb-vm-large:~/plotting/plot-wave-height/run2max.npy"
 TOPATH="/Users/drs/Desktop"
 
