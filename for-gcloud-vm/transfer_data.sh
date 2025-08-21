@@ -10,11 +10,11 @@ ZONE="us-west1-a"   # large vm
 # FROMPATH="drs@xb-vm-large:~/xbeach/models/frun3-30m-bldgs-12hr-tideloc1/"
 # TOPATH="$GDRIVEPATH/xbeach/models/"
 
-# vm to local; plotting results
-# FROMPATH="drs@xb-vm-large:~/plotting/plot-transect/ytrans5640-t29.png"
-FROMPATH="drs@xb-vm-large:~/plotting/plot-output/temp/f90.png"
-# FROMPATH="drs@xb-vm-large:~/plotting/plot-output/run5-5m-bldgs-6hr-tideloc1-largedomain-H.mp4"
-# FROMPATH="drs@xb-vm-large:~/plotting/plot-output/frun3-30m-bldgs-12hr-tideloc1-H.mp4"
+
+# # vm to local; plotting results
+FROMPATH="drs@xb-vm-large:~/plotting/plot-output/run10-5m-nobldgs-6hr-tideloc1-tt2-morph-H.mp4"
+# FROMPATH="drs@xb-vm-large:~/plotting/plot-output/temp.png"
+# # FROMPATH="drs@xb-vm-large:~/plotting/plot-wave-height/run2max.npy"
 TOPATH="/Users/drs/Desktop"
 
 gcloud compute scp --recurse --zone "$ZONE" "$FROMPATH" "$TOPATH"
