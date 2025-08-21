@@ -8,9 +8,9 @@ class plot_forcing():
     def __init__(self, savepoint=4):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
         self.focring_dir = os.path.join(self.file_dir, "..", "..", "data", "forcing")
-        self.loc_keys = {1: "sw", 2:"se", 3:"nw", 4:"ne"}
-        self.fn_forcing =  os.path.join(self.focring_dir, "xbeach{}-{}.dat" .format(savepoint, self.loc_keys[savepoint]))
+        self.loc_keys = {1: "sw", 2:"se", 3:"nw", 4:"ne", 5:"nearshore", 6:"offshore-central", 7:"onshore"}
         self.savepoint = savepoint
+        self.fn_forcing = os.path.join(self.focring_dir, "xbeach{}-{}.dat" .format(savepoint, self.loc_keys[savepoint]))
         
     def plot(self, var="el", t_start=None, t_stop=None, savefig=False):
         label, ylabel, color = self.var2label(var)
@@ -168,8 +168,8 @@ class plot_forcing():
 
 
 if __name__ == "__main__":
-    pf = plot_forcing(savepoint=1)
-    pf.plot(var="el", t_start=64.5, t_stop=67.5, savefig=True)
+    pf = plot_forcing(savepoint=5)
+    pf.plot(var="hs", t_start=65, t_stop=68, savefig=False)
     # pf.plot(var="hs", t_start=64.5, t_stop=67.5, savefig=False)
 
 

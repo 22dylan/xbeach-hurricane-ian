@@ -14,16 +14,29 @@ import xarray as xr
 
 class xb_plotting_large():
     """docstring for xb_plotting_large"""
-    def __init__(self, model_runname, var="H", xbeach_duration=12):
+    def __init__(self, path_to_model, path_to_forcing, var="H", tstart=None, 
+                tstop=None, domain_size="estero", xbeach_duration=12, vmax=1, 
+                vmin=0, make_video=True, make_all_figs=True, make_fig_cur_ts=True,
+                dpi=300):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
-        self.model_runname = model_runname
-        self.path_to_model = os.path.join(self.file_dir, "..", "..", "xbeach", "models", self.model_runname)
-        self.var = var
-        self.read_buildings()
-        self.xbeach_duration = xbeach_duration
+        self.path_to_model = path_to_model
+        self.model_runname = self.path_to_model.split(os.sep)[-1]
 
-        fn = os.path.join(self.file_dir, "..", "..", "data", "forcing", "xbeach{}-{}.dat" .format(1, "sw"))
-        self.forcing = self.frcing_to_dataframe(fn)
+        self.var = var
+        self.tstart = tstart
+        self.tstop = tstop
+        self.domain_size = domain_size
+        self.xbeach_duration = xbeach_duration
+        self.vmax = vmax
+        self.vmin = vmin
+        self.make_video = make_video
+        self.make_all_figs = make_all_figs
+        self.make_fig_cur_ts = make_fig_cur_ts
+        self.dpi = dpi
+
+        self.read_buildings()
+        self.frcing_to_dataframe(path_to_forcing)
+
 
     def read_buildings(self):
         elev = self.read_data_xarray(var="zb", t=0)
@@ -72,18 +85,58 @@ class xb_plotting_large():
         df["t_sec"] = np.linspace(0, (len(df)-1)*dt, len(df))
         df["t_hr"] = df["t_sec"]/3600
 
-        return df
+        self.forcing = df
 
-    def plot_timestep(self, t_idx=1, t_hr=None, vmax=None, fname=None, prnt_read=False, t_start=None, t_stop=None):
+    def plot_timestep_micro(self, t_hr=None, fname=None, t_start=None, t_stop=None):
+        if t_hr!=None:
+            t = self.read_time_xarray()
+            t_idx = np.argmin(np.abs(t-t_hr*3600))
+        else:
+            t_idx = -1
+        
+        xgr, ygr = self.read_grid()                                     # reading grid data
+        data_plot = self.read_data_xarray(var=self.var, t=t_idx)        # reading xbeach output
+        mask = (data_plot < -99999)
+        masked_array = np.ma.array(data_plot, mask=mask)
+
+        # setting some info for the plot        
+        cmap, cmap_bldg = self.setup_coloramp()
+        s, cbar_s = self.get_labels(t, t_idx)
+
+        # -- make figure and subplots
+        figsize = (10,8)
+        fig, (ax0, ax1) = plt.subplots(2,1, figsize=figsize, height_ratios=[8,1])
+
+        # -- drawing first plot
+        pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=self.vmin, vmax=self.vmax, cmap=cmap)
+        plt.colorbar(pcm, ax=ax0, extend="max", label=cbar_s, aspect=40)
+
+        ax0.pcolormesh(xgr, ygr, self.bldgs, cmap=cmap_bldg)
+        ax0.set_title(s)
+
+        self.draw_time_series(ax1, t_hr, t_start, t_stop)
+
+        # --- saving file
+        if fname != None:
+            plt.savefig(fname,
+                        transparent=False, 
+                        dpi=self.dpi,
+                        bbox_inches='tight',
+                        pad_inches=0.1,
+                        )
+            plt.close()
+
+    def plot_timestep(self, t_hr=None, fname=None, prnt_read=False, t_start=None, t_stop=None):
         """ function to plot single timestep
         """
         if t_hr!=None:
             t = self.read_time_xarray()
             t_idx = np.argmin(np.abs(t-t_hr*3600))
-
+            t_hr = t[t_idx]/3600
+        else:
+            t_idx = -1
 
         data_plot, time = self.read_data_xarray(var="H", t=t_idx, prnt_read=prnt_read, rtn_time_array=True)
-
         xgr, ygr = self.read_grid()
 
         # fig, ax = plt.subplots(1,1, figsize=figsize)
@@ -100,36 +153,11 @@ class xb_plotting_large():
         mask = (data_plot < -99999)
         masked_array = np.ma.array(data_plot, mask=mask)
         
-        # setting up colormap for water
-        if self.var == "H":
-            cmap = mpl.cm.plasma
-            cmap.set_bad('bisque')
-            vmax = 1.0 if vmax == None else vmax
-            vmin = 0
-        else:
-            cmap = mpl.cm.cividis
-            cmap.set_bad('bisque')
-            vmax = 3.0 if vmax == None else vmax
-            vmin = 0.0
-
-        cmap_bldg = mpl.cm.Greys_r
-        cmap_bldg.set_bad(alpha=0)
-
-        if self.var == "H":
-            s = "Time: {:2.1f}h ({:8.0f}s)" .format(time[t_idx]/3600, time[t_idx])
-            cbar_s = "Wave Height (m)"
-        elif self.var == "zs":
-            s = "Time: {:2.1f}h ({:8.0f}s)" .format(time[t_idx]/3600, time[t_idx])
-            cbar_s = "Water Elevation (m)"
-        elif self.var == "zs0":
-            s = "Time {:2.1f}h ({:8.0f}s)" .format(time[t_idx]/3600, time[t_idx])
-            cbar_s = "Water Elevation - Tide Alone (m)"
-        elif self.var == "zs1":
-            s = "Time {:2.1f}h ({:8.0f}s)" .format(time[t_idx]/3600, time[t_idx])
-            cbar_s = "Water Elevation - Minus Tide (m)"
+        cmap, cmap_bldg = self.setup_coloramp()
+        s, cbar_s = self.get_labels(t, t_idx)
 
         # -- drawing first plot
-        pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=vmin, vmax=vmax, cmap=cmap)
+        pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=self.vmin, vmax=self.vmax, cmap=cmap)
         plt.colorbar(pcm, ax=ax1, extend="max", label=cbar_s)
 
         ax0.pcolormesh(xgr, ygr, self.bldgs, cmap=cmap_bldg)
@@ -151,10 +179,9 @@ class xb_plotting_large():
         masked_array2 = masked_array[id_ll[1]:id_ur[1], id_ll[0]:id_ur[0]]
         bldgs2 = self.bldgs[id_ll[1]:id_ur[1], id_ll[0]:id_ur[0]]
 
-        ax1.pcolormesh(xgr2, ygr2, masked_array2, vmin=vmin, vmax=vmax, cmap=cmap)
+        ax1.pcolormesh(xgr2, ygr2, masked_array2, vmin=self.vmin, vmax=self.vmax, cmap=cmap)
         ax1.pcolormesh(xgr2, ygr2, bldgs2, cmap=cmap_bldg)
         
-        # # --old
         box_l = xgr2[0,-1] - xgr2[0,0]
         box_h = ygr2[-1,0] - ygr2[0,0]
 
@@ -162,39 +189,72 @@ class xb_plotting_large():
         rect = patches.Rectangle(box_lower_left, box_l, box_h, linewidth=3, zorder=10, edgecolor='r', facecolor='none')
         ax0.add_patch(rect)
         
+        self.draw_time_series(ax2, t_hr, t_start, t_stop)
 
+
+        # --- saving file
+        if fname != None:
+            plt.savefig(fname,
+                        transparent=False, 
+                        dpi=self.dpi,
+                        bbox_inches='tight',
+                        pad_inches=0.1,
+                        )
+            plt.close()
+
+    def draw_time_series(self, ax, t_hr, t_start, t_stop):
         # # -- now plotting time series
         x,y = self.forcing["t_hr"], self.forcing["el"]
-        ax2.plot(x,y, lw=0.75, ls="-.", color='k', zorder=0, label="ADCIRC/SWAN")
+        ax.plot(x,y, lw=0.75, ls="-.", color='k', zorder=0, label="ADCIRC/SWAN")
         
-        if t_start!= None:
-            start_idx = self.forcing.loc[self.forcing["t_sec"]==t_start*3600].index[0]
-        if t_stop!=None:
-            stop_idx = self.forcing.loc[self.forcing["t_sec"]==t_stop*3600].index[0]
+        start_idx = self.forcing.loc[self.forcing["t_sec"]==t_start*3600].index[0]
+        stop_idx = self.forcing.loc[self.forcing["t_sec"]==t_stop*3600].index[0]
+
         df_trnc = self.forcing.iloc[start_idx:stop_idx]
-        ax2.plot(df_trnc["t_hr"], df_trnc["el"], color="#ff5370", lw=2, zorder=1, label="XBeach")
+        ax.plot(df_trnc["t_hr"], df_trnc["el"], color="#ff5370", lw=2, zorder=1, label="XBeach")
 
         df_trnc.reset_index(inplace=True)
         t_trnc_hr = df_trnc["t_hr"].iloc[0]+t_hr
 
         # interpolating water level on time series
         y_ = np.interp(t_trnc_hr, df_trnc["t_hr"].values, df_trnc["el"].values)
+        ax.scatter(t_trnc_hr, y_, color="k", s=40, zorder=2)
+        ax.set_xlabel("Time (hr)")
+        ax.set_ylabel("Water Elevation (m)")
+        ax.set_xlim([20,90])
+        leg = ax.legend(loc="upper left", facecolor='white')
+        leg.get_frame().set_alpha(None)
 
-        ax2.scatter(t_trnc_hr, y_, color="k", s=40, zorder=2)
-        ax2.set_xlabel("Time (hr)")
-        ax2.set_ylabel("Water Elevation (m)")
-        ax2.set_xlim([20,90])
-        ax2.legend(loc="upper left")
 
-        # --- saving file
-        if fname != None:
-            plt.savefig(fname,
-                        transparent=False, 
-                        dpi=500,
-                        bbox_inches='tight',
-                        pad_inches=0.1,
-                        )
-            plt.close()
+
+    def get_labels(self, time, t_idx):
+        if self.var == "H":
+            s = "Time: {:2.1f}h ({:8.0f}s)" .format(time[t_idx]/3600, time[t_idx])
+            cbar_s = "Wave Height (m)"
+        elif self.var == "zs":
+            s = "Time: {:2.1f}h ({:8.0f}s)" .format(time[t_idx]/3600, time[t_idx])
+            cbar_s = "Water Elevation (m)"
+        elif self.var == "zs0":
+            s = "Time {:2.1f}h ({:8.0f}s)" .format(time[t_idx]/3600, time[t_idx])
+            cbar_s = "Water Elevation - Tide Alone (m)"
+        elif self.var == "zs1":
+            s = "Time {:2.1f}h ({:8.0f}s)" .format(time[t_idx]/3600, time[t_idx])
+            cbar_s = "Water Elevation - Minus Tide (m)"
+        return s, cbar_s
+
+    def setup_coloramp(self):
+        # setting up colormap for water
+        if self.var == "H":
+            cmap = mpl.cm.plasma
+            cmap.set_bad('bisque')
+        else:
+            cmap = mpl.cm.cividis
+            cmap.set_bad('bisque')
+
+        cmap_bldg = mpl.cm.Greys_r
+        cmap_bldg.set_bad(alpha=0)
+
+        return cmap, cmap_bldg
 
     def xbeach_duration_to_start_stop(self):
         if self.xbeach_duration == 12:
@@ -204,22 +264,22 @@ class xb_plotting_large():
         elif self.xbeach_duration == 3:
             return 64.5, 67.5
 
-    def make_animation_imageio(self, tstart=None, tstop=None, vmax=2, makefigs=True):
+    def make_animation(self):
         t = self.read_time_xarray()
-        if tstart == None:
-            tstart = t[0]
-        if tstop == None:
-            tstop = t[-1]/3600
-        tstart_idx = np.argmin(np.abs(t-tstart*3600))
-        tstop_idx = np.argmin(np.abs(t-tstop*3600))
+        if self.tstart == None:
+            self.tstart = t[0]
+        if self.tstop == None:
+            self.tstop = t[-1]/3600
+        tstart_idx = np.argmin(np.abs(t-self.tstart*3600))
+        tstop_idx = np.argmin(np.abs(t-self.tstop*3600))
         
         t_start_xbeach, t_stop_xbeach = self.xbeach_duration_to_start_stop()
-        print("creating video with tstart={:.2f}hr and tstop={:.2f}hr" .format(tstart, tstop))
-        print("  found nearest time steps as: tstart={:.2f} hr and tstop={:.2f}hr" .format(t[tstart_idx]/3600, t[tstop_idx]/3600))
-        print("  making video with time indices: tstart_idx={} and tstop_idx={}" .format(tstart_idx, tstop_idx))
+        print("creating video with tstart = {:.2f} hr and tstop = {:.2f} hr" .format(self.tstart, self.tstop))
+        print("  found nearest time steps as: tstart = {:.2f} hr and tstop = {:.2f}hr" .format(t[tstart_idx]/3600, t[tstop_idx]/3600))
+        print("  making video with time indices: tstart_idx = {} and tstop_idx = {}" .format(tstart_idx, tstop_idx))
         # --- making images to comprise video
         temp_dir = os.path.join(self.file_dir, "temp")
-        if makefigs:
+        if self.make_all_figs:
             if os.path.isdir(temp_dir):
                 shutil.rmtree(temp_dir)
             self.make_directory(temp_dir)
@@ -229,16 +289,36 @@ class xb_plotting_large():
                     print(t_)
                 fn = os.path.join(temp_dir, "f{}.png" .format(t_))
                 t_hr = t[t_]/3600
-                self.plot_timestep(t_hr=t_hr, fname=fn, vmax=vmax, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+                if self.domain_size == "estero":
+                    self.plot_timestep(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+                elif self.domain_size == "micro":
+                    self.plot_timestep_micro(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+
                 plt.close()
         
         self.matplotlib_writer(tstart_idx, tstop_idx, temp_dir)
+
+    def plot_frame(self, t_hr):
+        t = self.read_time_xarray()
+        t_idx = np.argmin(np.abs(t-t_hr*3600))
+        t_hr_plot = (t[t_idx])/3600
+        t_start_xbeach, t_stop_xbeach = self.xbeach_duration_to_start_stop()
+        print("creating frame at t_hr = {:.2f} hr" .format(t_hr_plot))
+        print("  nearest time step to input <{:.2f}> hr is t_hr = {:.2f} hr" .format(t_hr, t_hr_plot))
+        print("  this corresponds to time array index: t_idx={}" .format(t_idx))
+        
+        fn = "f{}.png" .format(t_idx)
+        if self.domain_size == "estero":
+            self.plot_timestep(t_hr=t_hr_plot, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+        elif self.domain_size == "micro":
+            self.plot_timestep_micro(t_hr=t_hr_plot, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+
 
     def matplotlib_writer(self, tstart_idx, tstop_idx, temp_dir):
         video_name = '{}-{}.mp4'.format(self.model_runname, self.var)
         fig, ax = plt.subplots(figsize=(16,9))
         writer = animation.FFMpegWriter(fps=10)
-        with writer.saving(fig, video_name, dpi=500):
+        with writer.saving(fig, video_name, dpi=self.dpi):
           for step in range(tstart_idx, tstop_idx):
                 fn = os.path.join(temp_dir, "f{}.png".format(step))
                 if os.path.isfile(fn):
@@ -380,13 +460,33 @@ class xb_plotting_large():
         return deg
 
 if __name__ == "__main__":
-    xbpl = xb_plotting_large(model_runname="frun1-30m-bldgs-12hr-tideloc4", 
-                            var="H", 
-                            xbeach_duration=12)
+    file_dir = os.path.dirname(os.path.realpath(__file__))
 
-    # xbpl.read_data_xarray(var="H", t=0, rtn_time_array=True, prnt_read=True)
-    xbpl.make_animation_imageio(tstart=1, tstop=1.2, vmax=1, makefigs=True)
-    # xbpl.plot_timestep(t_hr=1.5, vmax=1, prnt_read=True, fname=None, t_start=60.25, t_stop=72.25)
+    model_runname = "frun13-microdomain-1m-bldgs-3hr-tideloc1-tt2"
+    # model_runname = "run6-5m-bldgs-3hr-tideloc4"
+    path_to_model = os.path.join(file_dir, "..", "..", "xbeach", "models", model_runname)
+
+    forcing_pt_plot = "xbeach5-nearshore.dat"
+    path_to_forcing = os.path.join(file_dir, "..", "..", "data", "forcing", forcing_pt_plot)
+
+    xbpl = xb_plotting_large(
+                        path_to_model    = path_to_model,               # path to model
+                        path_to_forcing  = path_to_forcing,             # path to forcing to draw in animation
+                        var              = "zs",                         # variable to plot (H=wave height; zs=water level)
+                        tstart           = 1,                        # start time for animation in hours; None starts at begining of simulation 
+                        tstop            = 1.5,                        # end time for animation in hours; None ends at last time step in xboutput.nc
+                        domain_size      = "micro",                     # eitehr "estero" or "micro" for full estero island runs or very small grid
+                        xbeach_duration  = 3,                           # xbeach simulation duration; used to 
+                        vmin             = 1,                           # vmax for plotting
+                        vmax             = 3,                           # vmax for plotting
+                        make_video       = True,                        # make video
+                        make_all_figs    = True,
+                        make_fig_cur_ts  = True,                        # make fig of current (or final)
+                        dpi              = 300,
+                        )
+    # xbpl.make_animation()
+    xbpl.plot_frame(t_hr=12)
+
     plt.show()
 
 

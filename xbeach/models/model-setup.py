@@ -26,20 +26,20 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "run11-5m-nobldgs-6hr-tideloc1-tt2-morph",
-        "t_start": 63.25,          # time step (hr) in adcirc/swan time to start running XBeach
-        "t_stop": 69.25,           # time step (hr) in adcirc/swan time to stop  running XBeach
+        "model_name": "run13-microdomain-1m-bldgs-3hr-tideloc1-tt2",
+        "t_start": 65,          # time step (hr) in adcirc/swan time to start running XBeach
+        "t_stop": 68,           # time step (hr) in adcirc/swan time to stop  running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
-        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-smaller-epsg32617.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
+        "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-micro-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain2-epsg32617.geojson"),
         # "path_to_domain": os.path.join(self.file_dir, "..", "..", "data", "xbeach-domain", "xbeach-domain-transects-epsg32617.geojson"),
-        "path_to_buildings": None,
-        # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs.geojson"),
+        # "path_to_buildings": None,
+        "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs_micro.geojson"),
         # "path_to_buildings": os.path.join(self.file_dir, "..", "..", "data", "buildings", "ft_myers_bldgs_estero.geojson"),
         "path_to_forcing": os.path.join(self.file_dir, "..", "..", "data", "forcing"),
-        "forcing_files": ["xbeach1-sw.dat", "xbeach2-se.dat", "xbeach3-nw.dat", "xbeach4-ne.dat"],
+        "forcing_files": ["xbeach1-sw.dat", "xbeach2-se.dat", "xbeach3-nw.dat", "xbeach4-ne.dat", "xbeach5-nearshore.dat"],
         "forcing_pts_geojson": os.path.join(self.file_dir, "..", "..", "data", "forcing", "forcing-pts.geojson"),
         "local_utm_epsg": "EPSG:32617",
         "drawfigs": True,
@@ -49,7 +49,7 @@ class setup_xbeach():
 
     def set_xbeach_params(self):
         self.xbeach_params = {
-                    "xbeach_res" : 5,          # in local utm units (m here).
+                    "xbeach_res" : 1,          # in local utm units (m here).
                     
                     # -- grid input --
                     # "xori"      : 0,            # x-coordinate of origin of axis
@@ -77,7 +77,7 @@ class setup_xbeach():
 
                     # -- time input --
                     "tstart"    : 0,            # Start time of output, in morphological time
-                    "tintg"     : 60,           # interval time of global output
+                    "tintg"     : 5,           # interval time of global output
                     "tintm"     : 400,          # interval time of mean, var, max, min output
                     "tintp"     : 60,           # interval time of point/runup gauge output
                     # "tstop"     : 200000,       # end time seconds
@@ -100,15 +100,15 @@ class setup_xbeach():
 
                     # -- swan wave input options
                     # "dthetaS_XB": 0,                # The (counter-clockwise) angle in the degrees needed to rotate from the x-axis in swan to the x-axis pointing east
-                    "wbctype"   : "swan",           # swan wave input
-                    "bcfile"    : "loclist.txt",    # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
-                    "nspectrumloc": 2,              # number of wave spectra in offshore boundary
+                    # "wbctype"   : "swan",           # swan wave input
+                    # "bcfile"    : "loclist.txt",    # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
+                    # "nspectrumloc": 2,              # number of wave spectra in offshore boundary
 
                     # -- wave calculation options
                     "wavemodel" : "surfbeat",     # stationary (0), surfbeat (1) or non-hydrostatic (2)
-                    # "wbctype"   : "jonstable",  # New wave boundary condition type
-                    # "nspectrumloc": 2,            # number of wave spectra in offshore boundary
-                    # "bcfile"    : "jonswap.txt",         # Name of spectrum file
+                    "wbctype"   : "jonstable",  # New wave boundary condition type
+                    "nspectrumloc": 1,            # number of wave spectra in offshore boundary
+                    "bcfile"    : "jonswap.txt",         # Name of spectrum file
                     # "bcfile"    : "loclist.txt",         # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
 
                     # "wbcversion"  : 3,            # wave boundary condition version
@@ -133,7 +133,7 @@ class setup_xbeach():
                     # "umin"     : 0.0,
 
                     # -- sediment transport options --
-                    "sedtrans": 1,      # Turn on sediment transport
+                    "sedtrans": 0,      # Turn on sediment transport
                     # "dico"  : 1,
                     # "D50"   : 0.0002,
                     # "D90"   : 0.0003,
@@ -141,7 +141,7 @@ class setup_xbeach():
                     # "z0"    : 0.006,
 
                     # -- morphologic opttions --
-                    "morphology": 1,            # Turn on morphology
+                    "morphology": 0,            # Turn on morphology
                     "struct"    : 0,            # turn on hard structures (1) or not (0)
                     # "ne_layer"  : "ne_layer.grd", # filename for non-erodible layer
                     # "morfac"   : 0,
@@ -152,11 +152,12 @@ class setup_xbeach():
                     # "hswitch"  : 0.1,
 
                     # -- output options --
-                    "global_var": ["zs", "zs0", "zs1", "H", "hh", "zb"]
+                    "global_var": ["zs", "zs0", "zs1", "H", "hh", "zb", "cx", "cy", "ue", "ve"]
                     }
     
     def setup_inputs(self):
         input_vals = self.input_vals()
+        self.set_domain_micro(input_vals["path_to_domain"])
         self.set_model_name(input_vals["model_name"])
         self.set_t_start(input_vals["t_start"])
         self.set_t_stop(input_vals["t_stop"])
@@ -170,6 +171,12 @@ class setup_xbeach():
         self.set_local_utm_epsg(input_vals["local_utm_epsg"])
         self.set_drawfigs(input_vals["drawfigs"])
         self.set_savefigs(input_vals["savefigs"])
+    
+    def set_domain_micro(self, val):
+        if "micro" in val:
+            self.microdomain = True
+        else:
+            self.microdomain = False
 
     def set_model_name(self, model_name):
         self.model_name = model_name
@@ -196,7 +203,7 @@ class setup_xbeach():
     
     def set_forcing_files(self, val=None):
         self.forcing_files = val
-        self.forcing_loc_keys = {1: "sw", 2:"se", 3:"nw", 4:"ne"}
+        self.forcing_loc_keys = {1: "sw", 2:"se", 3:"nw", 4:"ne", 5:"nearshore"}
 
     def set_forcing_pts_geojson(self, val=None):
         self.forcing_pts_geojson = val
@@ -235,7 +242,11 @@ class setup_xbeach():
         grid_df, grid, x, y = self.setup_grid(gdf_domain)   # setup xbeach grid with (0,0) in lower left corner. grid is rotated.
         os.remove("temp.tiff")
         if self.drawfigs:
-            fig, ax = plt.subplots(1,1, figsize=(5,8))
+            if self.microdomain:
+                figsize=(5,4)
+            else:
+                figsize=(3,8)
+            fig, ax = plt.subplots(1,1, figsize=figsize)
             ax.imshow(grid.T, origin="lower", vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             ax.set_xlabel("x")
             ax.set_ylabel("y", rotation=0)
@@ -287,8 +298,11 @@ class setup_xbeach():
         self.xbeach_params["ny"] = np.shape(zgr)[0] -1
 
         if self.drawfigs:
-            # fig, ax = plt.subplots(1,1, figsize=(8,1))
-            fig, ax = plt.subplots(1,1, figsize=(3,8))
+            if self.microdomain:
+                figsize=(5,4)
+            else:
+                figsize=(3,8)
+            fig, ax = plt.subplots(1,1, figsize=figsize)
             ax.pcolor(xgr,ygr,zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             # ax.imshow(zgr, origin="lower", vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             ax.set_xlabel("x (m)")
@@ -354,32 +368,36 @@ class setup_xbeach():
                 grid_ = grid_df.loc[gdf_temp]
                 zgr[grid_["idy"], grid_["idx"]] = struct_height
 
-        cleanup_buildings = True
-        if cleanup_buildings:
-            from scipy.ndimage import generate_binary_structure
-            from scipy.ndimage import binary_opening
+        # cleanup_buildings = False
+        # if cleanup_buildings:
+        #     from scipy.ndimage import generate_binary_structure
+        #     from scipy.ndimage import binary_opening
 
-            print("look into morphologic opening/closing")
-            # https://www.google.com/search?sa=X&sca_esv=ac435d3c33422e6e&udm=2&fbs=AIIjpHxU7SXXniUZfeShr2fp4giZ1Y6MJ25_tmWITc7uy4KIepxPkVkiyvcVCXrRQKSfjcQaZDIJ_rZS9U2lXSeywwkx2RqfGgrn_WzrZShdTAOSEZYi0LXbNCA9W0WLzi4w5V2DCag7TLy809cB3MnvELTUMe9mejS7pUq3-GZJSAmkDnjlkYEclcgtNjkPKQp8uxsgk0k6ehKsZSeCXhVOMOizqhV8dQ&q=morphological+opening+and+closing&ved=2ahUKEwiY6dTE-JePAxUcGDQIHXGzJrsQtKgLegQIFBAB&biw=1358&bih=797&dpr=2#vhid=Q2OxxoYA2c-saM&vssid=mosaic
-            # https://homepages.inf.ed.ac.uk/rbf/HIPR2/open.htm
-            mask = (zgr == struct_height)
+        #     print("look into morphologic opening/closing")
+        #     # https://www.google.com/search?sa=X&sca_esv=ac435d3c33422e6e&udm=2&fbs=AIIjpHxU7SXXniUZfeShr2fp4giZ1Y6MJ25_tmWITc7uy4KIepxPkVkiyvcVCXrRQKSfjcQaZDIJ_rZS9U2lXSeywwkx2RqfGgrn_WzrZShdTAOSEZYi0LXbNCA9W0WLzi4w5V2DCag7TLy809cB3MnvELTUMe9mejS7pUq3-GZJSAmkDnjlkYEclcgtNjkPKQp8uxsgk0k6ehKsZSeCXhVOMOizqhV8dQ&q=morphological+opening+and+closing&ved=2ahUKEwiY6dTE-JePAxUcGDQIHXGzJrsQtKgLegQIFBAB&biw=1358&bih=797&dpr=2#vhid=Q2OxxoYA2c-saM&vssid=mosaic
+        #     # https://homepages.inf.ed.ac.uk/rbf/HIPR2/open.htm
+        #     mask = (zgr == struct_height)
 
-            # Define a structuring element to check the neighborhood.
-            # A 3x3 square is a good default.
-            struct = generate_binary_structure(2, 2)
+        #     # Define a structuring element to check the neighborhood.
+        #     # A 3x3 square is a good default.
+        #     struct = generate_binary_structure(2, 2)
 
-            # Step 2: Perform morphological opening on the mask
-            # 'iterations' can be adjusted to remove larger isolated groups
-            cleaned_mask = binary_opening(mask, structure=struct, iterations=1)
+        #     # Step 2: Perform morphological opening on the mask
+        #     # 'iterations' can be adjusted to remove larger isolated groups
+        #     cleaned_mask = binary_opening(mask, structure=struct, iterations=1)
 
-            # Step 3: Apply the cleaned mask to the original array
-            cleaned_arr = zgr.copy()
-            cleaned_arr[mask & ~cleaned_mask] = zgr_original[mask & ~cleaned_mask] # Or any value to replace with
-            zgr = cleaned_arr.copy()
-            print(np.max(zgr))
+        #     # Step 3: Apply the cleaned mask to the original array
+        #     cleaned_arr = zgr.copy()
+        #     cleaned_arr[mask & ~cleaned_mask] = zgr_original[mask & ~cleaned_mask] # Or any value to replace with
+        #     zgr = cleaned_arr.copy()
+        #     print(np.max(zgr))
 
         if self.drawfigs:
-            fig, ax = plt.subplots(1,1, figsize=(3,8))
+            if self.microdomain:
+                figsize=(5,4)
+            else:
+                figsize=(3,8)
+            fig, ax = plt.subplots(1,1, figsize=figsize)
             ax.pcolor(xgr,ygr,zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             ax.set_xlabel("x (m)")
             ax.set_ylabel("y (m)", rotation=90)
@@ -512,7 +530,11 @@ class setup_xbeach():
 
         """
         if self.xbeach_params["tideloc"] == 1:
-            elev_df = frcng_df[["t_sec", "el1-sw"]]
+            if self.microdomain:
+                elev_df = frcng_df[["t_sec", "el5-nearshore"]]
+            else:
+                elev_df = frcng_df[["t_sec", "el1-sw"]]
+
         elif self.xbeach_params["tideloc"] == 2:
             elev_df = frcng_df[["t_sec", "el1-sw", "el3-nw"]]           # if tideloc=2, see paulrevere
         elif self.xbeach_params["tideloc"] == 4:
@@ -522,7 +544,6 @@ class setup_xbeach():
         fn_out = os.path.join(self.path_to_model, self.xbeach_params["zs0file"])
         elev_df.to_csv(fn_out, sep="\t", index=None, header=None, float_format='%10.3f')
                 
-        
         """ now turning attention to wave forcing.
             
             wave forcing can be specified at specific points, so I'm 
@@ -979,14 +1000,14 @@ class setup_xbeach():
         
         sides = np.array(sides)
         
-        # # note: the two lines below are used for small domain.
-        # print("Temporarilty using this")
-        # w = sides[np.argsort(sides)][2:]        # width  is defined here as crossshore distance
-        # l = sides[np.argsort(sides)][0:2]       # length is defined here as alongshore distance
+        # note: the two lines below are used for small domain.
+        print("Temporarilty using this")
+        w = sides[np.argsort(sides)][2:]        # width  is defined here as crossshore distance
+        l = sides[np.argsort(sides)][0:2]       # length is defined here as alongshore distance
         
-        # note: the two lines below are used for large domain.
-        w = sides[np.argsort(sides)[0:2]]       # width  is defined here as crossshore distance
-        l = sides[np.argsort(sides)[2:]]        # length is defined here as alongshore distance
+        # # note: the two lines below are used for large domain.
+        # w = sides[np.argsort(sides)[0:2]]       # width  is defined here as crossshore distance
+        # l = sides[np.argsort(sides)[2:]]        # length is defined here as alongshore distance
         
         theta_r, theta_d = self.compute_theta((xo, yo), (xa, ya))   # angle that grid is rotated, measured relative to east
         self.origin = (xo, yo)

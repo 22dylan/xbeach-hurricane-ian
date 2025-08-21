@@ -1,5 +1,9 @@
-
-
+import os
+import numpy as np
+import xarray as xr
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class xb_plotting_pt():
     """docstring for xb_plotting_pt"""
@@ -10,7 +14,7 @@ class xb_plotting_pt():
         self.var = var
         self.xgr, self.ygr = self.read_grid()
     
-    def read_data_xarray(self, var, t, prnt_read=False, rtn_time_array=False):
+    def read_data_xarray_pt(self, var, idx, idy, prnt_read=False, rtn_time_array=False):
         fn = os.path.join(self.path_to_model, "xboutput.nc")
         ds = xr.open_dataset(fn, chunks={"globaltime": 100})
         if prnt_read:
@@ -18,13 +22,19 @@ class xb_plotting_pt():
             print(ds)
             print("\n\n")
         
-        slice_data = ds[var].isel(globaltime=slice(t,t+1))
+        slice_data = ds[var][:,idy,idx]
+
         if rtn_time_array:
             time = ds["globaltime"].values
-            # print("Last time step: {} hr." .format(time[-1]/60/60))
-            return slice_data.values[0,:,:], time
+            return slice_data.values, time
         else:
-            return slice_data.values[0,:,:]
+            return slice_data.values
+    
+    def read_data_xarray_gd(self, var="zb"):
+        fn = os.path.join(self.path_to_model, "xboutput.nc")
+        ds = xr.open_dataset(fn, chunks={"globaltime": 100})
+        slice_data = ds[var][0,:,:]
+        return slice_data
 
     def read_grid(self):
         fn = os.path.join(self.path_to_model, "x.grd")
@@ -67,7 +77,7 @@ class xb_plotting_pt():
         return xgr, ygr
 
  
-    def plot_water_level_point(self, xys, drawdomain=False, savefig=False):
+    def plot_water_level_point(self, xys, drawdomain=False, fulldomain=True, savefig=False):
         colors = sns.color_palette("husl")
         fig, ax = plt.subplots(1,1,figsize=(6,4))
         cnt = 0
@@ -75,17 +85,18 @@ class xb_plotting_pt():
         for xy in xys:
             idx = np.argmin(np.abs(self.xgr[0,:] - xy[0]))
             idy = np.argmin(np.abs(self.ygr[:,0] - xy[1]))
-            data_ = self.data[:, idy, idx] #- self.data_zs0[:, idy, idx]
-
+        
+            data_, t= self.read_data_xarray_pt(var=self.var, idx=idx, idy=idy, prnt_read=False, rtn_time_array=True)
 
             # -- plotting
-            data_[data_<-99999] = 0
+            # data_[data_<-99999] = 0
 
-            ax.plot(self.time/3600, data_, label="{}" .format(cnt), color=colors[cnt], lw=2)
+            ax.plot(t/3600, data_, label="{}" .format(cnt), color=colors[cnt], lw=1.3)
             cnt += 1
 
         ax.set_xlabel("Time (hrs)")
-        ax.set_ylabel("Elevation (m)")
+        # ax.set_ylabel("Elevation (m)")
+        ax.set_ylabel("Wave Height (m)")
         ax.legend()
         if savefig:
             fn = "elevation-timeseries.png"
@@ -97,17 +108,26 @@ class xb_plotting_pt():
                         )
 
         if drawdomain:
-            data_plot = self.data[0,:,:]
+            data_plot = self.read_data_xarray_gd()
+            # data_plot = self.data[0,:,:]
 
-            fig, ax = plt.subplots(1,1, figsize=(4,8))
+            if fulldomain:
+                figsize=(4,8)
+            else:
+                figsize=(8,6)
+            fig, ax = plt.subplots(1,1, figsize=figsize)
             # --- new
             mask = (data_plot < -99999)
             masked_array = np.ma.array(data_plot, mask=mask)
-            cmap = mpl.cm.Blues
+            cmap = mpl.cm.BrBG_r
             cmap.set_bad('bisque',1.)
-            ax.pcolormesh(self.xgr, self.ygr, masked_array, vmin=-0.5, vmax=np.max(self.data), cmap=cmap)
+            ax.pcolormesh(self.xgr, self.ygr, masked_array, vmin=-8.5, vmax=8.5, cmap=cmap)
             ax.set_xlabel("x (m)")
             ax.set_ylabel("y (m)")
+
+            if fulldomain==False:
+                ax.set_xlim([2600, 3500])
+                ax.set_ylim([5000, 6000])
             cnt = 0
 
             for xy in xys:
@@ -136,7 +156,17 @@ class xb_plotting_pt():
 
 
 if __name__ == "__main__":
-    xbpp = xb_plotting_pt("gvm-run3-30m-nobldgs", var="H")
-    xbpp.plot_water_level_point(xys=[[10,40], [100,40]])
+    xbpp = xb_plotting_pt("run6-5m-bldgs-3hr-tideloc4", var="H")
+    xbpp.plot_water_level_point(xys=[
+                                    [2700,5276], 
+                                    [2895,5276], 
+                                    [2927,5276], 
+                                    [2959,5314]
+                                    ], 
+                                drawdomain=True, 
+                                fulldomain=False, 
+                                savefig=True)
 
+
+    plt.show()
 
