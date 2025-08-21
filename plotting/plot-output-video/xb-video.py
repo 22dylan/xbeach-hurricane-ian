@@ -239,6 +239,7 @@ class xb_plotting_large():
                     ax.axis('off')  # Optional: Hide axes for a cleaner look
                     plt.tight_layout()
                     writer.grab_frame()
+        plt.close()
         # Clean up the temporary directory
         if os.path.isdir(temp_dir):
             shutil.rmtree(temp_dir)
@@ -372,7 +373,7 @@ class xb_plotting_large():
 if __name__ == "__main__":
     xbpl = xb_plotting_large(model_runname="frun1-30m-bldgs-12hr-tideloc4", var="H")
     # xbpl.read_data_xarray(var="H", t=0, rtn_time_array=True, prnt_read=True)
-    xbpl.make_animation_imageio(tstart=4, tstop=8, vmax=1, makefigs=True)
+    xbpl.make_animation_imageio(tstart=1, tstop=1.2, vmax=1, makefigs=True)
     # xbpl.plot_timestep(t_hr=1.5, vmax=1, prnt_read=True, fname=None, t_start=60.25, t_stop=72.25)
     plt.show()
 
