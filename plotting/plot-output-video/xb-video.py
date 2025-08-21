@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import imageio
 import seaborn as sns
 import xarray as xr
@@ -222,6 +223,27 @@ class xb_plotting_large():
                 self.plot_timestep(t_hr=t_hr, fname=fn, vmax=vmax, t_start=60.25, t_stop=72.25)
                 plt.close()
         
+        self.matplotlib_writer(tstart_idx, tstop_idx, temp_dir)
+
+    def matplotlib_writer(self, tstart_idx, tstop_idx, temp_dir):
+        video_name = '{}-{}.mp4'.format(self.model_runname, self.var)
+        fig, ax = plt.subplots(figsize=(16,9))
+        writer = animation.FFMpegWriter(fps=10)
+        with writer.saving(fig, video_name, dpi=500):
+          for step in range(tstart_idx, tstop_idx):
+                fn = os.path.join(temp_dir, "f{}.png".format(step))
+                if os.path.isfile(fn):
+                    image = plt.imread(fn)
+                    ax.clear()
+                    ax.imshow(image)
+                    ax.axis('off')  # Optional: Hide axes for a cleaner look
+                    plt.tight_layout()
+                    writer.grab_frame()
+        # Clean up the temporary directory
+        if os.path.isdir(temp_dir):
+            shutil.rmtree(temp_dir)
+
+    def imageio_writer(self, tstart_idx, tstop_idx, temp_dir):
         # --- making video
         video_name = '{}-{}.mp4' .format(self.model_runname, self.var)
         writer = imageio.get_writer(video_name, fps=10, format='FFMPEG')
@@ -233,7 +255,8 @@ class xb_plotting_large():
         writer.close()
         if os.path.isdir(temp_dir):
             shutil.rmtree(temp_dir)
-            
+
+
 
     def wrld_to_grid_index(self, xgr, ygr, xy):
         idx = np.argmin(np.abs(xgr[0,:] - xy[0]))
