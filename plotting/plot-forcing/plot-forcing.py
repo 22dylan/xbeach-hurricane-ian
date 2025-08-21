@@ -25,6 +25,7 @@ class plot_forcing():
         
         df_trnc = df.iloc[start_idx:stop_idx]
 
+        # fig, ax = plt.subplots(1,1, figsize=(10,2))
         fig, ax = plt.subplots(1,1, figsize=(5,3))
         
         ls_full = "-"
@@ -40,9 +41,8 @@ class plot_forcing():
 
         ax.plot(df["t_hr"], df[var], color="k", lw=lw_full, ls=ls_full, label=label, zorder=0)
 
-
         # ax.plot(df["t_sec"], df["el"], color='dodgerblue', lw=1.5, label="Water Elevation")
-        ax.legend()
+        ax.legend(loc="upper left")
         ax.set_xlabel("Time (Hours)")
         ax.set_ylabel(ylabel)
         ax.set_title("{}-sp{}-{}" .format(var, self.savepoint, self.loc_keys[self.savepoint]))
@@ -169,10 +169,13 @@ class plot_forcing():
 
 if __name__ == "__main__":
     pf = plot_forcing(savepoint=1)
-    # pf.plot(var="el", t_start=60.25, t_stop=72.25, savefig=False)
-    # pf.plot(var="el", t_start=63.25, t_stop=69.25, savefig=False)
-    # pf.plot(var="el", t_start=64.25, t_stop=68.25, savefig=False)
-    pf.plot(var="el", t_start=66.25, t_stop=68.25, savefig=True)
+    pf.plot(var="el", t_start=64.5, t_stop=67.5, savefig=True)
+    # pf.plot(var="hs", t_start=64.5, t_stop=67.5, savefig=False)
+
+
+    # pf = plot_forcing(savepoint=3)
+    # pf.plot(var="el", t_start=64.5, t_stop=67.5, savefig=False)
+    # pf.plot(var="hs", t_start=64.5, t_stop=67.5, savefig=False)
 
     # pf = plot_forcing(savepoint=1)
     # pf.plot(var="hs", t_start=60, t_stop=72, savefig=False)

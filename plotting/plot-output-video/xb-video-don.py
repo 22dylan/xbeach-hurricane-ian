@@ -265,7 +265,7 @@ if __name__ == "__main__":
     tstop = None                                 # end time for animation in hours; None ends at last time step in xboutput.nc
 
     xbpl = xb_plotting_large(model_runname=model_runname, var=var)
-    xbpl.make_animation_imageio(tstart=tstart, tstop=tstop, makefigs=True)
+    xbpl.make_animation_imageio(tstart=tstart, tstop=tstop, vmax=1, makefigs=True)
     plt.show()
 
 

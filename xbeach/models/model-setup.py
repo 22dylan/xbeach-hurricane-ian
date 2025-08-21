@@ -75,7 +75,6 @@ class setup_xbeach():
                     # "right"     : "neumann",    # Switch for lateral boundary at 0    (neumann, wall, no_advec, neumann_v, abs_1d)
                     # "maxdtfac"     : 500,    # Maximum increase/decrease in time stp in explosion prevention mechanism
 
-
                     # -- time input --
                     "tstart"    : 0,            # Start time of output, in morphological time
                     "tintg"     : 60,           # interval time of global output
@@ -289,7 +288,7 @@ class setup_xbeach():
 
         if self.drawfigs:
             # fig, ax = plt.subplots(1,1, figsize=(8,1))
-            fig, ax = plt.subplots(1,1, figsize=(5,8))
+            fig, ax = plt.subplots(1,1, figsize=(3,8))
             ax.pcolor(xgr,ygr,zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             # ax.imshow(zgr, origin="lower", vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             ax.set_xlabel("x (m)")
@@ -380,7 +379,7 @@ class setup_xbeach():
             print(np.max(zgr))
 
         if self.drawfigs:
-            fig, ax = plt.subplots(1,1, figsize=(4,8))
+            fig, ax = plt.subplots(1,1, figsize=(3,8))
             ax.pcolor(xgr,ygr,zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r")
             ax.set_xlabel("x (m)")
             ax.set_ylabel("y (m)", rotation=90)
@@ -393,7 +392,7 @@ class setup_xbeach():
                             bbox_inches="tight",
                             pad_inches=0.1,
                             )
-
+        
         # setting up non-erodible structure grid
         if self.xbeach_params["morphology"] == 1:
             if self.xbeach_params["struct"] == 1:
