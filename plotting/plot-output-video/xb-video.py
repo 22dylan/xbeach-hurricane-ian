@@ -14,12 +14,13 @@ import xarray as xr
 
 class xb_plotting_large():
     """docstring for xb_plotting_large"""
-    def __init__(self, model_runname, var="H"):
+    def __init__(self, model_runname, var="H", xbeach_duration=12):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
         self.model_runname = model_runname
         self.path_to_model = os.path.join(self.file_dir, "..", "..", "xbeach", "models", self.model_runname)
         self.var = var
         self.read_buildings()
+        self.xbeach_duration = xbeach_duration
 
         fn = os.path.join(self.file_dir, "..", "..", "data", "forcing", "xbeach{}-{}.dat" .format(1, "sw"))
         self.forcing = self.frcing_to_dataframe(fn)
@@ -195,6 +196,13 @@ class xb_plotting_large():
                         )
             plt.close()
 
+    def xbeach_duration_to_start_stop(self):
+        if self.xbeach_duration == 12:
+            return 60.25, 72.25
+        elif self.xbeach_duration == 6:
+            return 63.25, 69.25
+        elif self.xbeach_duration == 3:
+            return 64.5, 67.5
 
     def make_animation_imageio(self, tstart=None, tstop=None, vmax=2, makefigs=True):
         t = self.read_time_xarray()
@@ -205,6 +213,7 @@ class xb_plotting_large():
         tstart_idx = np.argmin(np.abs(t-tstart*3600))
         tstop_idx = np.argmin(np.abs(t-tstop*3600))
         
+        t_start_xbeach, t_stop_xbeach = self.xbeach_duration_to_start_stop()
         print("creating video with tstart={:.2f}hr and tstop={:.2f}hr" .format(tstart, tstop))
         print("  found nearest time steps as: tstart={:.2f} hr and tstop={:.2f}hr" .format(t[tstart_idx]/3600, t[tstop_idx]/3600))
         print("  making video with time indices: tstart_idx={} and tstop_idx={}" .format(tstart_idx, tstop_idx))
@@ -220,7 +229,7 @@ class xb_plotting_large():
                     print(t_)
                 fn = os.path.join(temp_dir, "f{}.png" .format(t_))
                 t_hr = t[t_]/3600
-                self.plot_timestep(t_hr=t_hr, fname=fn, vmax=vmax, t_start=60.25, t_stop=72.25)
+                self.plot_timestep(t_hr=t_hr, fname=fn, vmax=vmax, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
                 plt.close()
         
         self.matplotlib_writer(tstart_idx, tstop_idx, temp_dir)
@@ -371,7 +380,9 @@ class xb_plotting_large():
         return deg
 
 if __name__ == "__main__":
-    xbpl = xb_plotting_large(model_runname="frun1-30m-bldgs-12hr-tideloc4", var="H")
+    xbpl = xb_plotting_large(model_runname="frun1-30m-bldgs-12hr-tideloc4", 
+                            var="H", 
+                            xbeach_duration=12)
     # xbpl.read_data_xarray(var="H", t=0, rtn_time_array=True, prnt_read=True)
     xbpl.make_animation_imageio(tstart=1, tstop=1.2, vmax=1, makefigs=True)
     # xbpl.plot_timestep(t_hr=1.5, vmax=1, prnt_read=True, fname=None, t_start=60.25, t_stop=72.25)
