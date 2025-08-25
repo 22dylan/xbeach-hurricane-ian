@@ -26,7 +26,7 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "run13-microdomain-1m-bldgs-3hr-tideloc1-tt2",
+        "model_name": "run14-microdomain-1m-bldgs-3hr-tideloc2",
         "t_start": 65,          # time step (hr) in adcirc/swan time to start running XBeach
         "t_stop": 68,           # time step (hr) in adcirc/swan time to stop  running XBeach
         "path_to_dem": os.path.join(self.file_dir, "..", "..", "data", "dem", "dem-resampled.tiff"),
@@ -62,7 +62,7 @@ class setup_xbeach():
                     "thetamax"  : 90,           # Higher directional limit (angle w.r.t computational x-axis)   
                     "thetamin"  : -90,          # Lower directional limit (angle w.r.t computational x-axis)
                     # "single_dir": 0,            # Turn on stationary model for refraction, surfbeat based on mean direction
-                    "dtheta"    : 10,           # Directional resolution; 
+                    # "dtheta"    : 10,           # Directional resolution; 
                     "dtheta_s"  : 10,           # Directional in case of stationary refraction; not used in stationary mode
 
                     # -- numerics input --
@@ -77,12 +77,12 @@ class setup_xbeach():
 
                     # -- time input --
                     "tstart"    : 0,            # Start time of output, in morphological time
-                    "tintg"     : 5,           # interval time of global output
+                    "tintg"     : 10,           # interval time of global output
                     "tintm"     : 400,          # interval time of mean, var, max, min output
                     "tintp"     : 60,           # interval time of point/runup gauge output
                     # "tstop"     : 200000,       # end time seconds
                     "taper"     : 200,          # Spin-up time of wave boundary conditions, in morphological time
-                    "dtset"     : 0.1,          # Fixed timestep, overrides use of cfl
+                    # "dtset"     : 0.1,          # Fixed timestep, overrides use of cfl
 
                     # -- general constants --
                     # "rho"   : 1025,             # Density of water
@@ -90,8 +90,8 @@ class setup_xbeach():
 
                     # -- boundary conditions --
                     "zs0file"   : "water_elev.dat", # Name of tide boundary condition series
-                    "tideloc"   : 1,                # Number of corner points on which a tide time series is specified
-                    "tidetype"  : "instant",     # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
+                    "tideloc"   : 2,                # Number of corner points on which a tide time series is specified
+                    # "tidetype"  : "instant",     # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
                     # "zs0"       : 0,                # Inital water level
                     # "paulrevere": "sea" ,             # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
                     # "tidelen"   : None,           # length of tide signal (doesn't appear to be read in xbeach)
@@ -536,7 +536,10 @@ class setup_xbeach():
                 elev_df = frcng_df[["t_sec", "el1-sw"]]
 
         elif self.xbeach_params["tideloc"] == 2:
-            elev_df = frcng_df[["t_sec", "el1-sw", "el3-nw"]]           # if tideloc=2, see paulrevere
+            if self.microdomain:
+                elev_df = frcng_df[["t_sec", "el5-nearshore", "el5-nearshore"]]
+            else:
+                elev_df = frcng_df[["t_sec", "el1-sw", "el3-nw"]]           # if tideloc=2, see paulrevere
         elif self.xbeach_params["tideloc"] == 4:
             elev_df = frcng_df[["t_sec", "el1-sw", "el3-nw", "el4-ne", "el2-se"]]       # forcing points must be clockwise around domain starting from lower left corner
 

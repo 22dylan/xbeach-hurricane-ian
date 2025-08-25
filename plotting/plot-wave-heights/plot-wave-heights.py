@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 import scipy.stats as st
 import xarray as xr
 import matplotlib as mpl
@@ -28,7 +29,9 @@ class plot_wave_heights():
         print("max wave height saved as: {}" .format(fn_out+".npy"))
         
 
-    def plot_max_wave_height(self, model_runname, readlocal=False, vmax=None, fname=None, prnt_read=False, single_frame=False):
+    def plot_max_wave_height(self, model_runname, readlocal=False, vmax=None, 
+                             fname=None, prnt_read=False, single_frame=False,
+                             plt_bldgs=True):
         
         data_plot = self.read_local_or_ncdf(model_runname, readlocal)
 
@@ -64,9 +67,7 @@ class plot_wave_heights():
             vmax = 3.0 if vmax == None else vmax
             vmin = 0.0
 
-        cmap_bldg = mpl.cm.Greys_r
-        cmap_bldg.set_bad(alpha=0)
-
+        
         # -- drawing first plot
         pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=vmin, vmax=vmax, cmap=cmap)
         if single_frame:
@@ -74,8 +75,10 @@ class plot_wave_heights():
         else:
             ax_bar = ax1
         plt.colorbar(pcm, ax=ax_bar, extend="max", label="Max Wave Height (m)", aspect=40)
-
-        ax0.pcolormesh(xgr, ygr, bldgs, cmap=cmap_bldg)
+        if plt_bldgs:
+            cmap_bldg = mpl.cm.Greys_r
+            cmap_bldg.set_bad(alpha=0)
+            ax0.pcolormesh(xgr, ygr, bldgs, cmap=cmap_bldg)
         ax0.set_xlabel("x (m)")
         ax0.set_ylabel("y (m)")
         # ax0.set_title(s)
@@ -118,6 +121,64 @@ class plot_wave_heights():
                         )
             plt.close()
 
+    def plot_max_wave_height_stats(self, run1, run2, r1local=False, r2local=False, diff_colors=False, fname=None):
+        # read max wave heights
+        run1_max = self.read_local_or_ncdf(run1, r1local)
+        run2_max = self.read_local_or_ncdf(run2, r2local)
+
+        # read in zgrid - used to only consider overland values
+        model_runs = os.listdir(self.path_to_model)
+        model_run = [i for i in model_runs if run2.split("max")[0] in i]
+        model_run = [i for i in model_run if ".tar.gz" not in i][0]        
+        model_dir = os.path.join(self.path_to_model, model_run)
+        _, _, zgr = self.read_grid(model_dir)
+
+        # setting up mask; ignore all NaN's and cells that are considered water.
+        mask = ~np.isnan(run1_max) & ~np.isnan(run2_max) & (zgr>=0)
+        run1_max_nona, run2_max_nona = run1_max[mask], run2_max[mask]
+        run1_max_nona = run1_max_nona.flatten()
+        run2_max_nona = run2_max_nona.flatten()
+
+        diff = run1_max_nona - run2_max_nona
+        df = pd.DataFrame()
+        df["run1"] = run1_max_nona
+        df["run2"] = run2_max_nona
+        df["diff"] = diff
+
+        print(df['diff'].mean())
+        df_less = df.loc[df["diff"]<=0]
+        df_more = df.loc[df["diff"]>0]
+        print(df_less["diff"].mean())
+        print(df_more["diff"].mean())
+        
+
+        # plotting histogram
+        fig, ax = plt.subplots(1,1, figsize=(8,6))
+        df["diff"].hist(ax=ax, 
+                        bins=100, 
+                        density=False, 
+                        zorder=0, 
+                        color="navajowhite", 
+                        edgecolor='black', 
+                        linewidth=0.3)
+        ax.grid(False)
+        ax.axvline(x=0,ymin=0, ymax=1, zorder=1, color="k", ls="-.", lw=1)
+        r1_label = run1.split("max")[0]
+        r2_label = run2.split("max")[0]
+        ax.set_xlabel("Wave Height Difference (m)\n({} - {})" .format(r1_label, r2_label))
+        ax.set_ylabel("Frequency")
+        
+
+        if diff_colors:
+            # Iterate through the patches (bars) and set color conditionally
+            for patch in ax.patches:
+                if patch.get_x() < 0:
+                    patch.set_facecolor('lightcoral')
+                else:
+                    patch.set_facecolor('cornflowerblue')
+        self.savefig(fname)
+
+
     def plot_max_wave_height_scatter(self, run1, run2, r1local=False, r2local=False, fname=None):
         # read max wave heights
         run1_max = self.read_local_or_ncdf(run1, r1local)
@@ -159,13 +220,16 @@ class plot_wave_heights():
         # drawing 1 to 1 line
         ax.plot([-1,6], [-1,6], ls="-.", lw=1.0, zorder=1, color='k', label="1-to-1")
 
-        ax.set_xlabel("{} ({})" .format("run2", "6 hr simulation"))
-        ax.set_ylabel("{} ({})" .format("run6", "3 hr simulation"))
+        ax.set_xlabel("{} ({})" .format("run2", "with bldgs"))
+        ax.set_ylabel("{} ({})" .format("run7", "no bldgs"))
         ax.set_xlim([0,2])
         ax.set_ylim([0,2])
         ax.legend(loc="upper left")
         ax.set_title("Maximum Wave Height")
 
+        self.savefig(fname)
+
+    def savefig(self, fname):
         if fname!=None:
             plt.savefig(fname,
                         transparent=False, 
@@ -184,17 +248,12 @@ class plot_wave_heights():
         run1_max = np.ma.array(run1_max, mask=mask) # here mask tells numpy which cells to ignore.
         run2_max = np.ma.array(run2_max, mask=mask) # here mask tells numpy which cells to ignore.
 
-        # run1_max = np.where(mask, run1_max, np.nan)
-        # run1_max = run1_max[mask]
-        # run2_max = run2_max[mask]
-
         if norm == True:
             # max_max = np.maximum(run1_max, run2_max)
             denom = (run1_max+run2_max)/2
             diff = ((run1_max - run2_max)/denom)
         else:
             diff = run1_max - run2_max
-
 
         # read in buildngs and grid
         model_runs = os.listdir(self.path_to_model)
@@ -233,7 +292,7 @@ class plot_wave_heights():
             vmin = -1
             extend = None
         else:
-            label = "Difference (m) (run2 - run6)"
+            label = "Difference (m) (run2 - run7)"
             extend = "both"
         pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=vmin, vmax=vmax, cmap=cmap)
         plt.colorbar(pcm, ax=ax0, extend=extend, label=label, aspect=40)
@@ -374,22 +433,37 @@ class plot_wave_heights():
 
 if __name__ == "__main__":
     pwh = plot_wave_heights(var="H")
-    # pwh.save_max_wave_heights(model_runname="run6-5m-bldgs-3hr-tideloc4", fn_out="run6max")
-    pwh.plot_max_wave_height(model_runname="run2max.npy", 
-                             readlocal=True, 
-                             vmax=1, 
-                             single_frame=True, 
-                             fname="run2max.png")
+    # pwh.save_max_wave_heights(model_runname="run7-5m-nobldgs-6hr-tideloc4", fn_out="run7max")
+    # pwh.plot_max_wave_height(model_runname="run7max.npy", 
+    #                          readlocal=True, 
+    #                          vmax=1, 
+    #                          single_frame=True, 
+    #                          plt_bldgs=False,
+    #                          fname="run7max.png"
+    #                          )
     # pwh.plot_max_wave_height_diff(run1="run2max.npy", 
-    #                               run2="run6max.npy", 
+    #                               run2="run7max.npy", 
     #                               r1local=True, 
     #                               r2local=True, 
-    #                               vmax=0.1, 
-    #                               norm=True,
-    #                               fname="pdiff_map.png")
+    #                               vmax=1, 
+    #                               norm=False,
+    #                               fname="diff_r2r7_map.png")
 
-
-    # pwh.plot_max_wave_height_scatter(run1="run2max.npy", run2="run6max.npy", r1local=True, r2local=True, fname="scatter.png")
+    # pwh.plot_max_wave_height_scatter(run1="run2max.npy", 
+    #                                  run2="run7max.npy", 
+    #                                  r1local=True, 
+    #                                  r2local=True,
+    #                                  fname=None,
+    #                                  # fname="scatter.png"
+    #                                  )
+    pwh.plot_max_wave_height_stats(run1="run2max.npy", 
+                                   run2="run7max.npy", 
+                                   r1local=True, 
+                                   r2local=True,
+                                   diff_colors=True,
+                                   # fname=None,
+                                   fname="r2r7_hist.png"
+                                   )
 
 
     plt.show()

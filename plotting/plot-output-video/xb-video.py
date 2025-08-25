@@ -11,6 +11,9 @@ import seaborn as sns
 import xarray as xr
 
 
+import gcsfs
+from google.cloud import storage
+import fsspec
 
 class xb_plotting_large():
     """docstring for xb_plotting_large"""
@@ -110,7 +113,6 @@ class xb_plotting_large():
         # -- drawing first plot
         pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=self.vmin, vmax=self.vmax, cmap=cmap)
         plt.colorbar(pcm, ax=ax0, extend="max", label=cbar_s, aspect=40)
-
         ax0.pcolormesh(xgr, ygr, self.bldgs, cmap=cmap_bldg)
         ax0.set_title(s)
 
@@ -251,7 +253,9 @@ class xb_plotting_large():
             cmap = mpl.cm.cividis
             cmap.set_bad('bisque')
 
-        cmap_bldg = mpl.cm.Greys_r
+        # setting color for buildings.
+        custom_color = 'springgreen'
+        cmap_bldg = mpl.colors.ListedColormap([custom_color])
         cmap_bldg.set_bad(alpha=0)
 
         return cmap, cmap_bldg
@@ -459,6 +463,23 @@ class xb_plotting_large():
             deg += 360
         return deg
 
+    def test_read_gcloud(self):
+        storage_client = storage.Client()
+        bucket_name = "xb-bucket"
+        filename = "run2/xboutput.nc"
+        file_path = "gs://{}/{}" .format(bucket_name, filename)
+        ds = self.load_dataset_gcs(file_path)
+
+    def load_dataset_gcs(self, file_path):
+        try:
+            ds = xr.open_dataset(file_path, engine='netcdf4')
+            print("Dataset successfully opened!")
+            print(ds)
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+
 if __name__ == "__main__":
     file_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -472,21 +493,22 @@ if __name__ == "__main__":
     xbpl = xb_plotting_large(
                         path_to_model    = path_to_model,               # path to model
                         path_to_forcing  = path_to_forcing,             # path to forcing to draw in animation
-                        var              = "zs",                         # variable to plot (H=wave height; zs=water level)
+                        var              = "H",                         # variable to plot (H=wave height; zs=water level)
                         tstart           = 1,                        # start time for animation in hours; None starts at begining of simulation 
                         tstop            = 1.5,                        # end time for animation in hours; None ends at last time step in xboutput.nc
                         domain_size      = "micro",                     # eitehr "estero" or "micro" for full estero island runs or very small grid
                         xbeach_duration  = 3,                           # xbeach simulation duration; used to 
-                        vmin             = 1,                           # vmax for plotting
-                        vmax             = 3,                           # vmax for plotting
+                        vmin             = 0,                           # vmax for plotting
+                        vmax             = 1,                           # vmax for plotting
                         make_video       = True,                        # make video
                         make_all_figs    = True,
                         make_fig_cur_ts  = True,                        # make fig of current (or final)
                         dpi              = 300,
                         )
     # xbpl.make_animation()
-    xbpl.plot_frame(t_hr=12)
+    xbpl.plot_frame(t_hr=1)
 
+    # xbpl.test_read_gcloud()
     plt.show()
 
 
