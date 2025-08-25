@@ -2,10 +2,12 @@ import os
 import numpy as np
 import pandas as pd
 import scipy.stats as st
+from scipy.ndimage import label, generate_binary_structure
 import xarray as xr
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
 
 class plot_wave_heights():
     """docstring for plot_wave_heights"""
@@ -14,11 +16,13 @@ class plot_wave_heights():
         self.path_to_model = os.path.join(self.file_dir, "..", "..", "xbeach", "models")
         self.var = var
 
-    def read_buildings(self, model_dir):
+    def read_buildings(self, model_dir, rtn_mask=False):
         elev = self.read_data_xarray(model_dir, var="zb",t=0)
         # mask = (elev != 99)
         mask = (elev < 10)
         bldgs = np.ma.array(elev, mask=mask)
+        if rtn_mask:
+            return bldgs, mask
         return bldgs
 
     def save_max_wave_heights(self, model_runname, fn_out=None):
@@ -27,7 +31,71 @@ class plot_wave_heights():
         fn_out = os.path.join(self.file_dir, fn_out)
         np.save(fn_out, data_save)
         print("max wave height saved as: {}" .format(fn_out+".npy"))
+    
+
+    def plot_max_wave_height_bldg(self, model_runname, readlocal=False, vmax=None,
+                                domain_size="estero", grey_background=False, fname=None):
+        # read wave heights
+        H = self.read_local_or_ncdf(model_runname, readlocal)
         
+        # read buildings
+        model_dir = os.path.join(self.path_to_model, model_runname)
+        bldgs, mask = self.read_buildings(model_dir, rtn_mask=True)
+        
+        # assign max H to each building
+        bldg_H = self.assign_max_to_bldgs(H, mask)
+        
+
+        xgr, ygr, zgr = self.read_grid(model_dir)
+
+        if self.var == "H":
+            cmap = mpl.cm.plasma
+            if grey_background:
+                cmap.set_bad("grey")
+            else:
+                cmap.set_bad(alpha=0)
+
+            vmax = 1.0 if vmax == None else vmax
+            vmin = 0
+        else:
+            cmap = mpl.cm.cividis
+            cmap.set_bad('bisque')
+            vmax = 3.0 if vmax == None else vmax
+            vmin = 0.0
+
+
+        fig, ax = plt.subplots(1,1, figsize=(7,5))
+        ax.pcolormesh(xgr, ygr, zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r", zorder=0)
+        pcm = ax.pcolormesh(xgr, ygr, bldg_H, vmin=0, vmax=1, cmap=cmap, zorder=1)
+        plt.colorbar(pcm, ax=ax, extend="max", label="Max Wave Height (m)", aspect=40)
+        ax.set_xlabel("x (m)")
+        ax.set_xlabel("y (m)")
+
+
+
+    def assign_max_to_bldgs(self, data, mask):
+        max_H = np.empty(np.shape(data))
+        max_H[:] = np.nan
+        labeled_mask, num_features = label(~mask)
+        for i in range(num_features+1):
+            if i == 0:
+                continue
+            m_ = labeled_mask==i
+            m_ = ~m_
+            m_ = np.pad(m_, pad_width=1, mode="constant", constant_values=True)
+
+            shifted_up = m_[2:, 1:-1]
+            shifted_down = m_[:-2, 1:-1]
+            shifted_left = m_[1:-1, 2:]
+            shifted_right = m_[1:-1, :-2]
+            original_mask_trimmed = m_[1:-1, 1:-1]
+
+            offset_mask = original_mask_trimmed & shifted_up & shifted_down & shifted_left & shifted_right
+            offset_mask = ~offset_mask
+
+            max_H[labeled_mask==i] = np.nanmax(data[offset_mask])
+
+        return max_H
 
     def plot_max_wave_height(self, model_runname, readlocal=False, vmax=None, 
                              fname=None, prnt_read=False, single_frame=False,
@@ -37,7 +105,6 @@ class plot_wave_heights():
 
         # read in buildngs and grid
         model_runs = os.listdir(self.path_to_model)
-        model_runname = "run6max"
         model_run = [i for i in model_runs if model_runname.split("max")[0] in i]
         model_run = [i for i in model_run if ".tar.gz" not in i][0]        
         model_dir = os.path.join(self.path_to_model, model_run)
@@ -433,7 +500,13 @@ class plot_wave_heights():
 
 if __name__ == "__main__":
     pwh = plot_wave_heights(var="H")
-    # pwh.save_max_wave_heights(model_runname="run7-5m-nobldgs-6hr-tideloc4", fn_out="run7max")
+    pwh.plot_max_wave_height_bldg(model_runname="frun13-microdomain-1m-bldgs-3hr-tideloc1-tt2",
+                                  readlocal=False,
+                                  vmax=1,
+                                  domain_size="micro",  # or estero
+                                  # fname="temp.png"
+                                )
+
     # pwh.plot_max_wave_height(model_runname="run7max.npy", 
     #                          readlocal=True, 
     #                          vmax=1, 
@@ -441,6 +514,7 @@ if __name__ == "__main__":
     #                          plt_bldgs=False,
     #                          fname="run7max.png"
     #                          )
+
     # pwh.plot_max_wave_height_diff(run1="run2max.npy", 
     #                               run2="run7max.npy", 
     #                               r1local=True, 
@@ -456,14 +530,14 @@ if __name__ == "__main__":
     #                                  fname=None,
     #                                  # fname="scatter.png"
     #                                  )
-    pwh.plot_max_wave_height_stats(run1="run2max.npy", 
-                                   run2="run7max.npy", 
-                                   r1local=True, 
-                                   r2local=True,
-                                   diff_colors=True,
-                                   # fname=None,
-                                   fname="r2r7_hist.png"
-                                   )
+    # pwh.plot_max_wave_height_stats(run1="run2max.npy", 
+    #                                run2="run7max.npy", 
+    #                                r1local=True, 
+    #                                r2local=True,
+    #                                diff_colors=True,
+    #                                # fname=None,
+    #                                fname="r2r7_hist.png"
+    #                                )
 
 
     plt.show()
