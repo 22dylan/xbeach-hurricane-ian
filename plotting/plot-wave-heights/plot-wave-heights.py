@@ -44,7 +44,6 @@ class plot_wave_heights():
         
         # assign max H to each building
         bldg_H = self.assign_max_to_bldgs(H, mask)
-        
 
         xgr, ygr, zgr = self.read_grid(model_dir)
 
@@ -64,13 +63,19 @@ class plot_wave_heights():
             vmin = 0.0
 
 
-        fig, ax = plt.subplots(1,1, figsize=(7,5))
+        if domain_size=="micro":
+            figsize=(7,5)
+        else:
+            figsize=(3,8)
+        
+        fig, ax = plt.subplots(1,1, figsize=figsize)
         ax.pcolormesh(xgr, ygr, zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r", zorder=0)
         pcm = ax.pcolormesh(xgr, ygr, bldg_H, vmin=0, vmax=1, cmap=cmap, zorder=1)
         plt.colorbar(pcm, ax=ax, extend="max", label="Max Wave Height (m)", aspect=40)
         ax.set_xlabel("x (m)")
         ax.set_xlabel("y (m)")
 
+        self.savefig(fname)
 
 
     def assign_max_to_bldgs(self, data, mask):
@@ -179,14 +184,7 @@ class plot_wave_heights():
             ax0.add_patch(rect)
 
         # --- saving file
-        if fname != None:
-            plt.savefig(fname,
-                        transparent=False, 
-                        dpi=500,
-                        bbox_inches='tight',
-                        pad_inches=0.1,
-                        )
-            plt.close()
+        self.savefig(fname)
 
     def plot_max_wave_height_stats(self, run1, run2, r1local=False, r2local=False, diff_colors=False, fname=None):
         # read max wave heights
@@ -393,14 +391,7 @@ class plot_wave_heights():
         # ax0.add_patch(rect)
 
         # --- saving file
-        if fname != None:
-            plt.savefig(fname,
-                        transparent=False, 
-                        dpi=500,
-                        bbox_inches='tight',
-                        pad_inches=0.1,
-                        )
-            plt.close()
+        self.savefig(fname)
 
     def read_local_or_ncdf(self, run, rlocal):
         if rlocal:
@@ -500,7 +491,8 @@ class plot_wave_heights():
 
 if __name__ == "__main__":
     pwh = plot_wave_heights(var="H")
-    pwh.plot_max_wave_height_bldg(model_runname="frun13-microdomain-1m-bldgs-3hr-tideloc1-tt2",
+    pwh.plot_max_wave_height_bldg(
+                                  model_runname="frun13-microdomain-1m-bldgs-3hr-tideloc1-tt2",
                                   readlocal=False,
                                   vmax=1,
                                   domain_size="micro",  # or estero
