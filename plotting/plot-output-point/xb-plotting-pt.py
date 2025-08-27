@@ -125,9 +125,6 @@ class xb_plotting_pt():
             ax.set_xlabel("x (m)")
             ax.set_ylabel("y (m)")
 
-            if fulldomain==False:
-                ax.set_xlim([2600, 3500])
-                ax.set_ylim([5000, 6000])
             cnt = 0
 
             for xy in xys:
@@ -156,16 +153,16 @@ class xb_plotting_pt():
 
 
 if __name__ == "__main__":
-    xbpp = xb_plotting_pt("run6-5m-bldgs-3hr-tideloc4", var="H")
+    xbpp = xb_plotting_pt("run15-microdomain-1m-bldgs-2hr-tideloc2", var="H")
     xbpp.plot_water_level_point(xys=[
-                                    [2700,5276], 
-                                    [2895,5276], 
-                                    [2927,5276], 
-                                    [2959,5314]
+                                    [0,400], 
+                                    [200,400], 
+                                    [373,400], 
+                                    [600,400]
                                     ], 
                                 drawdomain=True, 
                                 fulldomain=False, 
-                                savefig=True)
+                                savefig=False)
 
 
     plt.show()

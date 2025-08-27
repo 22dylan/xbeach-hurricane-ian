@@ -169,7 +169,8 @@ class plot_forcing():
 
 if __name__ == "__main__":
     pf = plot_forcing(savepoint=5)
-    pf.plot(var="hs", t_start=65, t_stop=68, savefig=False)
+    pf.plot(var="el", t_start=65, t_stop=68, savefig=False)
+    pf.plot(var="el", t_start=65.25, t_stop=67.25, savefig=False)
     # pf.plot(var="hs", t_start=64.5, t_stop=67.5, savefig=False)
 
 

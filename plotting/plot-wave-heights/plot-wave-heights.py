@@ -21,6 +21,7 @@ class plot_wave_heights():
         # mask = (elev != 99)
         mask = (elev < 10)
         bldgs = np.ma.array(elev, mask=mask)
+
         if rtn_mask:
             return bldgs, mask
         return bldgs
@@ -36,12 +37,19 @@ class plot_wave_heights():
     def plot_max_wave_height_bldg(self, model_runname, readlocal=False, vmax=None,
                                 domain_size="estero", grey_background=False, fname=None):
         # read wave heights
-        H = self.read_local_or_ncdf(model_runname, readlocal)
-        
-        # read buildings
-        model_dir = os.path.join(self.path_to_model, model_runname)
-        bldgs, mask = self.read_buildings(model_dir, rtn_mask=True)
-        
+        H, model_runname = self.read_local_or_ncdf(model_runname, readlocal)
+        if readlocal == False:
+            # read buildings
+            model_dir = os.path.join(self.path_to_model, model_runname)
+            bldgs, mask = self.read_buildings(model_dir, rtn_mask=True)
+        else:
+            model_runs = os.listdir(self.path_to_model)
+            model_run = [i for i in model_runs if model_runname.split("max")[0] in i]
+            model_run = [i for i in model_run if ".tar.gz" not in i][0]        
+            model_dir = os.path.join(self.path_to_model, model_run)
+            mask = ~np.isnan(H)
+            bldgs = np.ma.array(H, mask=mask)
+
         # assign max H to each building
         bldg_H = self.assign_max_to_bldgs(H, mask)
 
@@ -73,7 +81,7 @@ class plot_wave_heights():
         pcm = ax.pcolormesh(xgr, ygr, bldg_H, vmin=0, vmax=1, cmap=cmap, zorder=1)
         plt.colorbar(pcm, ax=ax, extend="max", label="Max Wave Height (m)", aspect=40)
         ax.set_xlabel("x (m)")
-        ax.set_xlabel("y (m)")
+        ax.set_ylabel("y (m)")
 
         self.savefig(fname)
 
@@ -104,9 +112,9 @@ class plot_wave_heights():
 
     def plot_max_wave_height(self, model_runname, readlocal=False, vmax=None, 
                              fname=None, prnt_read=False, single_frame=False,
-                             plt_bldgs=True):
+                             domain_size="estero", plt_bldgs=True):
         
-        data_plot = self.read_local_or_ncdf(model_runname, readlocal)
+        data_plot, model_runname = self.read_local_or_ncdf(model_runname, readlocal)
 
         # read in buildngs and grid
         model_runs = os.listdir(self.path_to_model)
@@ -116,10 +124,14 @@ class plot_wave_heights():
         bldgs = self.read_buildings(model_dir)
         xgr, ygr, zgr = self.read_grid(model_dir)
 
+        if domain_size=="micro":
+            figsize=(7,5)
+        else:
+            figsize=(3,8)
 
         # fig, ax = plt.subplots(1,1, figsize=figsize)
         if single_frame:
-            fig, ax0 = plt.subplots(1,1, figsize=(3,8))
+            fig, ax0 = plt.subplots(1,1, figsize=figsize)
         else:
             fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(16,9), gridspec_kw={'width_ratios': [1,2.8]})
 
@@ -148,8 +160,10 @@ class plot_wave_heights():
             ax_bar = ax1
         plt.colorbar(pcm, ax=ax_bar, extend="max", label="Max Wave Height (m)", aspect=40)
         if plt_bldgs:
-            cmap_bldg = mpl.cm.Greys_r
+            custom_color = 'springgreen'
+            cmap_bldg = mpl.colors.ListedColormap([custom_color])
             cmap_bldg.set_bad(alpha=0)
+
             ax0.pcolormesh(xgr, ygr, bldgs, cmap=cmap_bldg)
         ax0.set_xlabel("x (m)")
         ax0.set_ylabel("y (m)")
@@ -188,8 +202,8 @@ class plot_wave_heights():
 
     def plot_max_wave_height_stats(self, run1, run2, r1local=False, r2local=False, diff_colors=False, fname=None):
         # read max wave heights
-        run1_max = self.read_local_or_ncdf(run1, r1local)
-        run2_max = self.read_local_or_ncdf(run2, r2local)
+        run1_max, run1 = self.read_local_or_ncdf(run1, r1local)
+        run2_max, run2 = self.read_local_or_ncdf(run2, r2local)
 
         # read in zgrid - used to only consider overland values
         model_runs = os.listdir(self.path_to_model)
@@ -210,11 +224,15 @@ class plot_wave_heights():
         df["run2"] = run2_max_nona
         df["diff"] = diff
 
-        print(df['diff'].mean())
         df_less = df.loc[df["diff"]<=0]
         df_more = df.loc[df["diff"]>0]
-        print(df_less["diff"].mean())
-        print(df_more["diff"].mean())
+        
+        print("Average change in max wave height: {:0.3f}" .format(df["diff"].mean()))
+        print("   Average change in max wave height where decrease: {:0.3f}" .format(df_less["diff"].mean()))
+        print("   Average change in max wave height where increase: {:0.3f}" .format(df_more["diff"].mean()))
+        # print(df['diff'].mean())
+        # print(df_less["diff"].mean())
+        # print(df_more["diff"].mean())
         
 
         # plotting histogram
@@ -240,14 +258,15 @@ class plot_wave_heights():
                 if patch.get_x() < 0:
                     patch.set_facecolor('lightcoral')
                 else:
-                    patch.set_facecolor('cornflowerblue')
+                    # patch.set_facecolor('cornflowerblue')
+                    patch.set_facecolor('lightgrey')
         self.savefig(fname)
 
 
     def plot_max_wave_height_scatter(self, run1, run2, r1local=False, r2local=False, fname=None):
         # read max wave heights
-        run1_max = self.read_local_or_ncdf(run1, r1local)
-        run2_max = self.read_local_or_ncdf(run2, r2local)
+        run1_max, run1 = self.read_local_or_ncdf(run1, r1local)
+        run2_max, run2 = self.read_local_or_ncdf(run2, r2local)
 
         # read in zgrid - used to only consider overland values
         model_runs = os.listdir(self.path_to_model)
@@ -306,8 +325,8 @@ class plot_wave_heights():
 
     def plot_max_wave_height_diff(self, run1, run2, r1local=False, r2local=False, vmax=1, norm=False, fname=None):
         # get difference in wave heights
-        run1_max = self.read_local_or_ncdf(run1, r1local)
-        run2_max = self.read_local_or_ncdf(run2, r2local)
+        run1_max, run1 = self.read_local_or_ncdf(run1, r1local)
+        run2_max, run2 = self.read_local_or_ncdf(run2, r2local)
 
         mask = np.isnan(run1_max) & np.isnan(run2_max)
         run1_max = np.ma.array(run1_max, mask=mask) # here mask tells numpy which cells to ignore.
@@ -397,10 +416,16 @@ class plot_wave_heights():
         if rlocal:
             fn = os.path.join(self.file_dir, run)
             rmax = np.load(fn)
+            runname = run.split("max")[0]
+            all_runs = os.listdir(self.path_to_model)
+            runname = [i for i in all_runs if runname in i]
+            runname = [i for i in runname if ".tar.gz" not in i][0]
+            
         else:
             fn = os.path.join(self.path_to_model, run)
             rmax = self.read_data_xarray_max(fn, var="H")
-        return rmax
+            runname = run
+        return rmax, runname
 
     def wrld_to_grid_index(self, xgr, ygr, xy):
         idx = np.argmin(np.abs(xgr[0,:] - xy[0]))
@@ -469,7 +494,7 @@ class plot_wave_heights():
 
             xgr, ygr = np.meshgrid(xs, ys)
         else:
-            fn_params = os.path.join(self.path_to_model, "params.txt")
+            fn_params = os.path.join(model_dir, "params.txt")
             with open(fn_params) as f:
                 for cnt, line in enumerate(f.readlines()):
                     ls = [i.strip() for i in line.split()]
@@ -491,21 +516,24 @@ class plot_wave_heights():
 
 if __name__ == "__main__":
     pwh = plot_wave_heights(var="H")
-    pwh.plot_max_wave_height_bldg(
-                                  model_runname="frun13-microdomain-1m-bldgs-3hr-tideloc1-tt2",
-                                  readlocal=False,
-                                  vmax=1,
-                                  domain_size="micro",  # or estero
-                                  # fname="temp.png"
-                                )
+    # pwh.plot_max_wave_height_bldg(
+    #                               model_runname="run15-microdomain-1m-bldgs-2hr-tideloc2",
+    #                               # model_runname="run2max.npy",
+    #                               readlocal=False,
+    #                               vmax=1,
+    #                               domain_size="micro",  # or estero
+    #                               grey_background=True,
+    #                               fname="run15-max-bldgs.png"
+    #                             )
 
-    # pwh.plot_max_wave_height(model_runname="run7max.npy", 
-    #                          readlocal=True, 
-    #                          vmax=1, 
-    #                          single_frame=True, 
-    #                          plt_bldgs=False,
-    #                          fname="run7max.png"
-    #                          )
+    pwh.plot_max_wave_height(model_runname="run15-microdomain-1m-bldgs-2hr-tideloc2", 
+                             readlocal=False, 
+                             vmax=1, 
+                             single_frame=True, 
+                             domain_size="micro",
+                             plt_bldgs=True,
+                             # fname="run15-max-H.png"
+                             )
 
     # pwh.plot_max_wave_height_diff(run1="run2max.npy", 
     #                               run2="run7max.npy", 

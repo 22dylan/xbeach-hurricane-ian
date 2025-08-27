@@ -19,8 +19,7 @@ class xb_plotting_large():
     """docstring for xb_plotting_large"""
     def __init__(self, path_to_model, path_to_forcing, var="H", tstart=None, 
                 tstop=None, domain_size="estero", xbeach_duration=12, vmax=1, 
-                vmin=0, make_video=True, make_all_figs=True, make_fig_cur_ts=True,
-                dpi=300):
+                vmin=0, make_all_figs=True, dpi=300):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
         self.path_to_model = path_to_model
         self.model_runname = self.path_to_model.split(os.sep)[-1]
@@ -32,9 +31,7 @@ class xb_plotting_large():
         self.xbeach_duration = xbeach_duration
         self.vmax = vmax
         self.vmin = vmin
-        self.make_video = make_video
         self.make_all_figs = make_all_figs
-        self.make_fig_cur_ts = make_fig_cur_ts
         self.dpi = dpi
 
         self.read_buildings()
@@ -267,6 +264,8 @@ class xb_plotting_large():
             return 63.25, 69.25
         elif self.xbeach_duration == 3:
             return 64.5, 67.5
+        elif self.xbeach_duration == 2:
+            return 65.25, 67.25
 
     def make_animation(self):
         t = self.read_time_xarray()
@@ -299,8 +298,11 @@ class xb_plotting_large():
                     self.plot_timestep_micro(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
 
                 plt.close()
-        
-        self.matplotlib_writer(tstart_idx, tstop_idx, temp_dir)
+        if self.domain_size=="micro":
+            figsize = (10,8)
+        else:
+            figsize = (16,9)
+        self.matplotlib_writer(tstart_idx, tstop_idx, temp_dir, figsize)
 
     def plot_frame(self, t_hr):
         t = self.read_time_xarray()
@@ -318,9 +320,9 @@ class xb_plotting_large():
             self.plot_timestep_micro(t_hr=t_hr_plot, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
 
 
-    def matplotlib_writer(self, tstart_idx, tstop_idx, temp_dir):
+    def matplotlib_writer(self, tstart_idx, tstop_idx, temp_dir, figsize):
         video_name = '{}-{}.mp4'.format(self.model_runname, self.var)
-        fig, ax = plt.subplots(figsize=(16,9))
+        fig, ax = plt.subplots(figsize=figsize)
         writer = animation.FFMpegWriter(fps=10)
         with writer.saving(fig, video_name, dpi=self.dpi):
           for step in range(tstart_idx, tstop_idx):
@@ -463,27 +465,11 @@ class xb_plotting_large():
             deg += 360
         return deg
 
-    def test_read_gcloud(self):
-        storage_client = storage.Client()
-        bucket_name = "xb-bucket"
-        filename = "run2/xboutput.nc"
-        file_path = "gs://{}/{}" .format(bucket_name, filename)
-        ds = self.load_dataset_gcs(file_path)
-
-    def load_dataset_gcs(self, file_path):
-        try:
-            ds = xr.open_dataset(file_path, engine='netcdf4')
-            print("Dataset successfully opened!")
-            print(ds)
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
 
 if __name__ == "__main__":
-    file_dir = os.path.dirname(os.path.realpath(__file__))
+    file_dir = os.path.dirname(os.path.realpath(__file__))              # current file directory
 
-    model_runname = "frun13-microdomain-1m-bldgs-3hr-tideloc1-tt2"
+    model_runname = "run15-microdomain-1m-bldgs-2hr-tideloc2"
     # model_runname = "run6-5m-bldgs-3hr-tideloc4"
     path_to_model = os.path.join(file_dir, "..", "..", "xbeach", "models", model_runname)
 
@@ -492,23 +478,19 @@ if __name__ == "__main__":
 
     xbpl = xb_plotting_large(
                         path_to_model    = path_to_model,               # path to model
-                        path_to_forcing  = path_to_forcing,             # path to forcing to draw in animation
+                        path_to_forcing  = path_to_forcing,             # path to forcing; used to draw water level plot in animation
                         var              = "H",                         # variable to plot (H=wave height; zs=water level)
-                        tstart           = 1,                        # start time for animation in hours; None starts at begining of simulation 
-                        tstop            = 1.5,                        # end time for animation in hours; None ends at last time step in xboutput.nc
-                        domain_size      = "micro",                     # eitehr "estero" or "micro" for full estero island runs or very small grid
-                        xbeach_duration  = 3,                           # xbeach simulation duration; used to 
-                        vmin             = 0,                           # vmax for plotting
+                        tstart           = None,                           # start time for animation in hours; None starts at begining of simulation; in XBeach time 
+                        tstop            = None,                         # end time for animation in hours; None ends at last time step in xboutput.nc; in XBeach time
+                        domain_size      = "micro",                     # either "estero" or "micro" for full estero island runs or very small grid respectively
+                        xbeach_duration  = 2,                           # xbeach simulation duration; used to map water elevation forcing plot to XBeach time step.
+                        vmin             = 0,                           # vmin for plotting
                         vmax             = 1,                           # vmax for plotting
-                        make_video       = True,                        # make video
-                        make_all_figs    = True,
-                        make_fig_cur_ts  = True,                        # make fig of current (or final)
-                        dpi              = 300,
+                        make_all_figs    = True,                        # create all frames, or read from existing `temp` dir
+                        dpi              = 300,                         # image resolution (dpi = dots per inch)
                         )
-    # xbpl.make_animation()
-    xbpl.plot_frame(t_hr=1)
-
-    # xbpl.test_read_gcloud()
+    xbpl.make_animation()
+    # xbpl.plot_frame(t_hr=1)
     plt.show()
 
 

@@ -1,8 +1,10 @@
 import os
+import shutil
 import numpy as np
 import xarray as xr
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import seaborn as sns
 
 class plot_transect():
@@ -26,7 +28,7 @@ class plot_transect():
             ylabel = "zs1: Water Level - No Surge/Tide"
         return ylabel
     
-    def read_data_xarray_transect(self, var, idy, t, prnt_read=False, rtn_time_array=False):
+    def read_data_xarray_transect(self, var, idy, t_idx, prnt_read=False, rtn_time_array=False):
         fn = os.path.join(self.path_to_model, "xboutput.nc")
         ds = xr.open_dataset(fn, chunks={"globaltime": 100})
         if prnt_read:
@@ -34,11 +36,12 @@ class plot_transect():
             print(ds)
             print("\n\n")
         time = ds["globaltime"].values
-        t_sec = t*3600
-        t_idx = np.argmin(np.abs(time - t_sec))
-
-        # slice_data = ds[var].isel(globaltime=slice(t,t+1))
+        # t_sec = t*3600
+        # t_idx = np.argmin(np.abs(time - t_sec))
         slice_data = ds[var][t_idx,idy,:]
+
+        if rtn_time_array:
+            return slice_data.values, time
 
         return slice_data.values
 
@@ -89,23 +92,28 @@ class plot_transect():
         return xgr, ygr
 
 
-    def plot_water_level_transect(self, y_trans, ts, plot_ground=True, h_plus_zs=False, fulldomain=True, drawdomain=False, fname=None):
+    def plot_water_level_transect(self, y_trans, ts, plot_ground=True, 
+                    h_plus_zs=False, fulldomain=True, drawdomain=False, 
+                    dpi=300, legend=True, figsize=(10,4), fname=None):
         idy = np.argmin(np.abs(self.ygr[:,0] - y_trans))
     
-        fig, ax = plt.subplots(1,1,figsize=(10,4))
+        fig, ax = plt.subplots(1,1,figsize=figsize)
         colors = sns.color_palette("viridis")
         if plot_ground == True:
-            grnd = self.read_data_xarray_transect(var="zb", idy=idy, t=0)
+            grnd, time = self.read_data_xarray_transect(var="zb", idy=idy, t_idx=0, rtn_time_array=True)
 
         # get data for variable
         for t_i, t in enumerate(ts):
-            data_ = self.read_data_xarray_transect(var=self.var, idy=idy, t=t)
+            t_sec = t*3600
+            t_idx = np.argmin(np.abs(time - t_sec))
+            
+            data_ = self.read_data_xarray_transect(var=self.var, idy=idy, t_idx=t_idx)
             data_[data_<-99999] = 0
             c = colors[t_i]
 
             # -- temporary            
             if h_plus_zs:
-                data_zs = self.read_data_xarray_transect(var="zs", idy=idy, t=t)
+                data_zs = self.read_data_xarray_transect(var="zs", idy=idy, t_idx=t_idx)
                 data_zs[data_<-99999] = 0
                 data_tot = data_zs + data_
 
@@ -113,7 +121,7 @@ class plot_transect():
                 ax.plot(data_zs, color="grey", ls="-.", lw=1, label="zs" .format(t))
                 ax.plot(data_, color="green", lw=1, label="H" .format(t))
 
-                s_title = "water elevation at y={} m; t={} hr" .format(y_trans, t)
+                s_title = "water elevation at y={} m\nt={:.2f} hr ({:.0f} s)" .format(y_trans, t, t*3600)
             else:
                 ax.plot(data_, color=c, lw=2, label="{:.2f} hr" .format(t))
                 s_title = "water elevation at y={} m" .format(y_trans)
@@ -127,7 +135,8 @@ class plot_transect():
         ax.set_ylim([ylim[0], 6])
         ax.set_xlim([0,np.shape(data_)[0]])
         ax.set_title(s_title)
-        ax.legend()
+        if legend:
+            ax.legend()
         if fname!=None:
             # fn = "ytrans{}-t{}.png" .format(y_trans, t)
             plt.savefig(fname,
@@ -169,17 +178,86 @@ class plot_transect():
                             bbox_inches='tight',
                             pad_inches=0.1,
                             )
-        
+
+    def video_transect(self, y_trans, t_start=None, t_stop=None, h_plus_zs=True, dpi=300):
+        idy = np.argmin(np.abs(self.ygr[:,0] - y_trans))
+
+        grnd, time = self.read_data_xarray_transect(var="zb", idy=idy, t_idx=0, rtn_time_array=True)
+        if t_start == None:
+            tstart = time[0]
+        if t_stop == None:
+            t_stop = time[-1]/3600
+
+
+        tstart_idx = np.argmin(np.abs(time-t_start*3600))
+        tstop_idx = np.argmin(np.abs(time-t_stop*3600))
+        temp_dir = os.path.join(self.file_dir, "temp")
+        figsize=(10,5)
+        for t_idx in range(tstart_idx, tstop_idx):
+            self.make_directory(temp_dir)
+
+            fn = os.path.join(temp_dir, "f{}.png" .format(t_idx))
+            self.plot_water_level_transect(
+                                    y_trans=y_trans, 
+                                    ts=[time[t_idx]/3600],
+                                    h_plus_zs=True, 
+                                    legend=False,
+                                    figsize=figsize,
+                                    dpi=dpi,
+                                    fname=fn,
+                                    )
+
+
+        self.matplotlib_writer(tstart_idx=tstart_idx, 
+                               tstop_idx=tstop_idx, 
+                               temp_dir=temp_dir, 
+                               figsize=figsize, 
+                               dpi=dpi)
+
+
+    def make_directory(self, path_out):
+        if not os.path.exists(path_out):
+            os.makedirs(path_out)
+        return path_out
+
+
+
+    def matplotlib_writer(self, tstart_idx, tstop_idx, temp_dir, figsize, dpi):
+        video_name = '{}-{}.mp4'.format(self.model_runname, self.var)
+        fig, ax = plt.subplots(figsize=figsize)
+        writer = animation.FFMpegWriter(fps=10)
+        with writer.saving(fig, video_name, dpi=300):
+          for step in range(tstart_idx, tstop_idx):
+                fn = os.path.join(temp_dir, "f{}.png".format(step))
+                if os.path.isfile(fn):
+                    image = plt.imread(fn)
+                    ax.clear()
+                    ax.imshow(image)
+                    ax.axis('off')  # Optional: Hide axes for a cleaner look
+                    plt.tight_layout()
+                    writer.grab_frame()
+        plt.close()
+        # Clean up the temporary directory
+        # if os.path.isdir(temp_dir):
+        #     shutil.rmtree(temp_dir)
+
 if __name__ == "__main__":
 
-    pt = plot_transect("frun13-microdomain-1m-bldgs-3hr-tideloc1-tt2", var="H")
-    pt.plot_water_level_transect(y_trans=450, 
-                                 ts=[1.8], 
-                                 h_plus_zs=True,
-                                 drawdomain=False, 
-                                 fulldomain=False,
-                                 fname="temp.png")
+    pt = plot_transect("run15-microdomain-1m-bldgs-2hr-tideloc2", var="H")
+    # pt.plot_water_level_transect(y_trans=400, 
+    #                              ts=[1.8],
+    #                              h_plus_zs=True,
+    #                              drawdomain=False, 
+    #                              fulldomain=False,
+    #                              # fname="temp.png"
+    #                              )
 
+    pt.video_transect(y_trans=400,
+                      t_start=1,
+                      t_stop=2,
+                      h_plus_zs=True,
+                      dpi=300,
+                      )
 
     plt.show()
 
