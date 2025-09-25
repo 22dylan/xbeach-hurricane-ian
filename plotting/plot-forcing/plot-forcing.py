@@ -25,8 +25,8 @@ class plot_forcing():
         
         df_trnc = df.iloc[start_idx:stop_idx]
 
-        # fig, ax = plt.subplots(1,1, figsize=(10,2))
-        fig, ax = plt.subplots(1,1, figsize=(5,3))
+        fig, ax = plt.subplots(1,1, figsize=(10,1.6))
+        # fig, ax = plt.subplots(1,1, figsize=(5,3))
         
         ls_full = "-"
         lw_full = 1.5
@@ -34,24 +34,24 @@ class plot_forcing():
             ax.plot(df_trnc["t_hr"], df_trnc[var], 
                     color="#ff5370", 
                     lw=3, 
-                    label="Truncated Elevation", 
+                    label="XBeach", 
                     zorder=1)
             ls_full = "-."
             lw_full = 0.75
 
-        ax.plot(df["t_hr"], df[var], color="k", lw=lw_full, ls=ls_full, label=label, zorder=0)
+        ax.plot(df["t_hr"], df[var], color="k", lw=lw_full, ls=ls_full, label="ADCIRC/SWAN", zorder=0)
 
         # ax.plot(df["t_sec"], df["el"], color='dodgerblue', lw=1.5, label="Water Elevation")
         ax.legend(loc="upper left")
         ax.set_xlabel("Time (Hours)")
         ax.set_ylabel(ylabel)
         ax.set_title("{}-sp{}-{}" .format(var, self.savepoint, self.loc_keys[self.savepoint]))
-
+        ax.set_xlim([0,96])
 
         if savefig:
             fn = "{}-sp{}-{}.png" .format(var, self.savepoint, self.loc_keys[self.savepoint])
             plt.savefig(fn,
-                        transparent=False, 
+                        transparent=True, 
                         dpi=500,
                         bbox_inches='tight',
                         pad_inches=0.1,
@@ -84,12 +84,12 @@ class plot_forcing():
 
     def var2label(self, var):
         v2l = { "el":"Water Elevation",
-                "hs": "Significant Wave Height",
+                "hs": "Sig. Wave Height",
                 "Tp": "Peak Period",
                 "wavedir": "Wave Direction"
         }
         v2y = { "el": "Water Elevation (m)",
-                "hs": "Significant Wave Height (m)",
+                "hs": "Sig. Wave Height (m)",
                 "Tp": "Peak Period (s)",
                 "wavedir": "Wave Direction"
         }
@@ -169,8 +169,8 @@ class plot_forcing():
 
 if __name__ == "__main__":
     pf = plot_forcing(savepoint=5)
-    pf.plot(var="el", t_start=65, t_stop=68, savefig=False)
-    pf.plot(var="el", t_start=65.25, t_stop=67.25, savefig=False)
+    pf.plot(var="el", t_start=66.25, t_stop=66.75, savefig=True)
+    pf.plot(var="hs", t_start=66.25, t_stop=66.75, savefig=True)
     # pf.plot(var="hs", t_start=64.5, t_stop=67.5, savefig=False)
 
 

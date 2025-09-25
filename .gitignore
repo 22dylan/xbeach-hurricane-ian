@@ -2,6 +2,7 @@
 data/
 xbeach/models/*/
 xbeach/examples/
+xbeach-install-macos/
 for-blackbird/
 
 # 
@@ -15,3 +16,4 @@ for-blackbird/
 *.xlsx
 *.out
 *.tar.gz
+*.npy

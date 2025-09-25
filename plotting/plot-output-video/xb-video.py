@@ -9,11 +9,8 @@ import matplotlib.animation as animation
 import imageio
 import seaborn as sns
 import xarray as xr
+import multiprocessing
 
-
-import gcsfs
-from google.cloud import storage
-import fsspec
 
 class xb_plotting_large():
     """docstring for xb_plotting_large"""
@@ -22,6 +19,7 @@ class xb_plotting_large():
                 vmin=0, make_all_figs=True, dpi=300):
         self.file_dir = os.path.dirname(os.path.realpath(__file__))
         self.path_to_model = path_to_model
+        self.xboutput_filename = self.get_output_filename()
         self.model_runname = self.path_to_model.split(os.sep)[-1]
 
         self.var = var
@@ -37,12 +35,22 @@ class xb_plotting_large():
         self.read_buildings()
         self.frcing_to_dataframe(path_to_forcing)
 
+    def get_output_filename(self):
+        files = os.listdir(self.path_to_model)
+        fn  = [i for i in files if "xboutput" in i][0]
+        return fn
 
     def read_buildings(self):
-        elev = self.read_data_xarray(var="zb", t=0)
-        mask = (elev != 99)
-        mask = (elev < 10)
-        self.bldgs = np.ma.array(elev, mask=mask)
+        fn_zgrid = os.path.join(self.path_to_model, "z.grd")
+        zs = []
+        with open(fn_zgrid,'r') as f:
+            for cnt, line in enumerate(f.readlines()):
+                z_ = [float(i.strip()) for i in line.split()]
+                zs.append(z_)
+        zgr = np.array(zs)
+        mask = (zgr != 10)
+        self.bldgs = np.ma.array(zgr, mask=mask)
+
 
     def frcing_to_dataframe(self, fn=None, n_header=3, n_var=7):
         t, el, wx, wy, hs, Tp, wavedir = [], [], [], [], [], [], [],
@@ -109,7 +117,7 @@ class xb_plotting_large():
 
         # -- drawing first plot
         pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=self.vmin, vmax=self.vmax, cmap=cmap)
-        plt.colorbar(pcm, ax=ax0, extend="max", label=cbar_s, aspect=40)
+        plt.colorbar(pcm, ax=ax0, extend="both", label=cbar_s, aspect=40)
         ax0.pcolormesh(xgr, ygr, self.bldgs, cmap=cmap_bldg)
         ax0.set_title(s)
 
@@ -135,7 +143,7 @@ class xb_plotting_large():
         else:
             t_idx = -1
 
-        data_plot, time = self.read_data_xarray(var="H", t=t_idx, prnt_read=prnt_read, rtn_time_array=True)
+        data_plot, time = self.read_data_xarray(var=self.var, t=t_idx, prnt_read=prnt_read, rtn_time_array=True)
         xgr, ygr = self.read_grid()
 
         # fig, ax = plt.subplots(1,1, figsize=figsize)
@@ -177,7 +185,7 @@ class xb_plotting_large():
         ygr2 = ygr[id_ll[1]:id_ur[1], id_ll[0]:id_ur[0]]
         masked_array2 = masked_array[id_ll[1]:id_ur[1], id_ll[0]:id_ur[0]]
         bldgs2 = self.bldgs[id_ll[1]:id_ur[1], id_ll[0]:id_ur[0]]
-
+        
         ax1.pcolormesh(xgr2, ygr2, masked_array2, vmin=self.vmin, vmax=self.vmax, cmap=cmap)
         ax1.pcolormesh(xgr2, ygr2, bldgs2, cmap=cmap_bldg)
         
@@ -247,7 +255,9 @@ class xb_plotting_large():
             cmap = mpl.cm.plasma
             cmap.set_bad('bisque')
         else:
-            cmap = mpl.cm.cividis
+            cmap = mpl.cm.plasma
+            # cmap = mpl.cm.Blues_r
+            # cmap = mpl.cm.berlin
             cmap.set_bad('bisque')
 
         # setting color for buildings.
@@ -267,7 +277,7 @@ class xb_plotting_large():
         elif self.xbeach_duration == 2:
             return 65.25, 67.25
 
-    def make_animation(self):
+    def make_animation(self, parallel=True, num_proc=None):
         t = self.read_time_xarray()
         if self.tstart == None:
             self.tstart = t[0]
@@ -287,22 +297,92 @@ class xb_plotting_large():
                 shutil.rmtree(temp_dir)
             self.make_directory(temp_dir)
 
-            for t_ in range(tstart_idx, tstop_idx):
-                if t_%10==0:
-                    print(t_)
-                fn = os.path.join(temp_dir, "f{}.png" .format(t_))
-                t_hr = t[t_]/3600
-                if self.domain_size == "estero":
-                    self.plot_timestep(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
-                elif self.domain_size == "micro":
-                    self.plot_timestep_micro(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+            if parallel:
+                my_list = []
+                for t_ in range(tstart_idx, tstop_idx):
+                    my_list.append((t_, t, temp_dir, t_start_xbeach, t_stop_xbeach))
 
-                plt.close()
+                with multiprocessing.Pool(num_proc) as pool:
+                    pool.starmap(self.make_frame, my_list)
+
+            else: # series 
+
+                for t_ in range(tstart_idx, tstop_idx):
+                    if t_%10==0:
+                        print(t_)
+                    self.make_frame(t_, t ,temp_dir, t_start_xbeach, t_stop_xbeach)
+                    # fn = os.path.join(temp_dir, "f{}.png" .format(t_))
+                    # t_hr = t[t_]/3600
+                    # if self.domain_size == "estero":
+                    #     self.plot_timestep(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+                    # elif self.domain_size == "micro":
+                    #     self.plot_timestep_micro(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+
+                    plt.close()
+            # --
+
         if self.domain_size=="micro":
             figsize = (10,8)
         else:
             figsize = (16,9)
         self.matplotlib_writer(tstart_idx, tstop_idx, temp_dir, figsize)
+
+    def make_frame(self, t_, t, temp_dir, t_start_xbeach, t_stop_xbeach):
+        fn = os.path.join(temp_dir, "f{}.png" .format(t_))
+        t_hr = t[t_]/3600
+
+        if self.var == "wind":
+            self.plot_wind(t_hr, fn, t_start_xbeach, t_stop_xbeach)
+            plt.close()
+            return
+
+        if self.domain_size == "estero":
+            self.plot_timestep(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+        elif self.domain_size == "micro":
+            self.plot_timestep_micro(t_hr=t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+
+        plt.close()
+
+    def plot_wind(self,t_hr, fname, t_start, t_stop):
+        if t_hr!=None:
+            t = self.read_time_xarray()
+            t_idx = np.argmin(np.abs(t-t_hr*3600))
+        else:
+            t_idx = -1
+        
+        xgr, ygr = self.read_grid()                                     # reading grid data
+        u, v = self.read_data_xarray(var=self.var, t=t_idx)        # reading xbeach output
+        print(u[0,0])
+        print(v[0,0])
+        # mask = (data_plot < -99999)
+        # masked_array = np.ma.array(data_plot, mask=mask)
+
+        xs = [20, 40, 60, 80, 100, 120, 140, 160, 180, 200]
+        ys = [20, 40, 60, 80, 100, 120, 140, 160, 180, 200]
+        xs, ys = np.meshgrid(xs, ys)
+        u = u[xs, ys]
+        v = v[xs, ys]
+
+        # -- make figure and subplots
+        figsize = (10,8)
+        fig, ax0 = plt.subplots(1,1, figsize=figsize,)
+        ax0.quiver(xs, ys, u, v)
+
+        # --- saving file
+        if fname != None:
+            plt.savefig(fname,
+                        transparent=False, 
+                        dpi=self.dpi,
+                        bbox_inches='tight',
+                        pad_inches=0.1,
+                        )
+            plt.close()
+        # # -- drawing first plot
+        # pcm = ax0.pcolormesh(xgr, ygr, masked_array, vmin=self.vmin, vmax=self.vmax, cmap=cmap)
+        # plt.colorbar(pcm, ax=ax0, extend="both", label=cbar_s, aspect=40)
+        # ax0.pcolormesh(xgr, ygr, self.bldgs, cmap=cmap_bldg)
+        # ax0.set_title(s)
+
 
     def plot_frame(self, t_hr):
         t = self.read_time_xarray()
@@ -312,8 +392,13 @@ class xb_plotting_large():
         print("creating frame at t_hr = {:.2f} hr" .format(t_hr_plot))
         print("  nearest time step to input <{:.2f}> hr is t_hr = {:.2f} hr" .format(t_hr, t_hr_plot))
         print("  this corresponds to time array index: t_idx={}" .format(t_idx))
-        
+
         fn = "f{}.png" .format(t_idx)
+        if self.var == "wind":
+            print('temporarily plotting wind')
+            self.plot_wind(t_hr, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
+            return
+
         if self.domain_size == "estero":
             self.plot_timestep(t_hr=t_hr_plot, fname=fn, t_start=t_start_xbeach, t_stop=t_stop_xbeach)
         elif self.domain_size == "micro":
@@ -326,6 +411,8 @@ class xb_plotting_large():
         writer = animation.FFMpegWriter(fps=10)
         with writer.saving(fig, video_name, dpi=self.dpi):
           for step in range(tstart_idx, tstop_idx):
+                if step%100==0:
+                    print("making video at step: {}" .format(step))
                 fn = os.path.join(temp_dir, "f{}.png".format(step))
                 if os.path.isfile(fn):
                     image = plt.imread(fn)
@@ -360,13 +447,22 @@ class xb_plotting_large():
         return (idx,idy)
 
     def read_time_xarray(self):
-        fn = os.path.join(self.path_to_model, "xboutput.nc")
+        fn = os.path.join(self.path_to_model, self.xboutput_filename)
         ds = xr.open_dataset(fn, chunks={"globaltime": 100})
         time = ds["globaltime"].values
         return time
 
     def read_data_xarray(self, var, t, prnt_read=False, rtn_time_array=False):
-        fn = os.path.join(self.path_to_model, "xboutput.nc")
+        if self.var == "wind":
+            fn = os.path.join(self.path_to_model, self.xboutput_filename)
+            ds = xr.open_dataset(fn, chunks={"globaltime": 100})
+            var1 = "windnv"
+            var2 = "windsu"
+            slice_datanv = ds[var1].isel(globaltime=slice(t,t+1)).values[0,:,:]
+            slice_datasu = ds[var2].isel(globaltime=slice(t,t+1)).values[0,:,:]
+            return slice_datasu, slice_datanv
+
+        fn = os.path.join(self.path_to_model, self.xboutput_filename)
         ds = xr.open_dataset(fn, chunks={"globaltime": 100})
         if prnt_read:
             print("Dataset object read:")
@@ -469,10 +565,10 @@ class xb_plotting_large():
 if __name__ == "__main__":
     file_dir = os.path.dirname(os.path.realpath(__file__))              # current file directory
 
-    model_runname = "run15-microdomain-1m-bldgs-2hr-tideloc2"
-    # model_runname = "run6-5m-bldgs-3hr-tideloc4"
+    model_runname = "test"
     path_to_model = os.path.join(file_dir, "..", "..", "xbeach", "models", model_runname)
 
+    # forcing_pt_plot = "xbeach1-sw.dat"
     forcing_pt_plot = "xbeach5-nearshore.dat"
     path_to_forcing = os.path.join(file_dir, "..", "..", "data", "forcing", forcing_pt_plot)
 
@@ -487,10 +583,10 @@ if __name__ == "__main__":
                         vmin             = 0,                           # vmin for plotting
                         vmax             = 1,                           # vmax for plotting
                         make_all_figs    = True,                        # create all frames, or read from existing `temp` dir
-                        dpi              = 300,                         # image resolution (dpi = dots per inch)
+                        dpi              = 200,                         # image resolution (dpi = dots per inch)
                         )
-    xbpl.make_animation()
-    # xbpl.plot_frame(t_hr=1)
+    # xbpl.make_animation(parallel=True, num_proc=2)
+    xbpl.plot_frame(t_hr=3)
     plt.show()
 
 

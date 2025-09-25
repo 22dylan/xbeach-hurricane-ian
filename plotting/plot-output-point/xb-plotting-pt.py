@@ -4,6 +4,7 @@ import xarray as xr
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
+import scipy.signal as sg
 
 class xb_plotting_pt():
     """docstring for xb_plotting_pt"""
@@ -76,7 +77,12 @@ class xb_plotting_pt():
 
         return xgr, ygr
 
- 
+    def compute_Hs(self, H):
+        H_one_third = np.quantile(H, q=2/3)
+        H = H[H>H_one_third]
+        Hs = np.mean(H)
+        return Hs
+
     def plot_water_level_point(self, xys, drawdomain=False, fulldomain=True, savefig=False):
         colors = sns.color_palette("husl")
         fig, ax = plt.subplots(1,1,figsize=(6,4))
@@ -85,13 +91,25 @@ class xb_plotting_pt():
         for xy in xys:
             idx = np.argmin(np.abs(self.xgr[0,:] - xy[0]))
             idy = np.argmin(np.abs(self.ygr[:,0] - xy[1]))
-        
             data_, t= self.read_data_xarray_pt(var=self.var, idx=idx, idy=idy, prnt_read=False, rtn_time_array=True)
+            print(np.mean(data_))
+
+            peaks,_ = sg.find_peaks(data_)
+            trghs,_ = sg.find_peaks(np.negative(data_))
+            n_obs = np.minimum(len(peaks), len(trghs))
+            peaks = peaks[0:n_obs]
+            trghs = trghs[0:n_obs]
+
+            H = data_[peaks] - data_[trghs]
+            Hs = self.compute_Hs(H)
+            print("Hs at {}: {}" .format(xy, Hs))
+
+            # peaks, troughs = np.array(peaks), np.array(troughs)
 
             # -- plotting
-            # data_[data_<-99999] = 0
-
+            
             ax.plot(t/3600, data_, label="{}" .format(cnt), color=colors[cnt], lw=1.3)
+ 
             cnt += 1
 
         ax.set_xlabel("Time (hrs)")
@@ -153,12 +171,13 @@ class xb_plotting_pt():
 
 
 if __name__ == "__main__":
-    xbpp = xb_plotting_pt("run15-microdomain-1m-bldgs-2hr-tideloc2", var="H")
+    xbpp = xb_plotting_pt("run26", var="zs1")
     xbpp.plot_water_level_point(xys=[
-                                    [0,400], 
-                                    [200,400], 
-                                    [373,400], 
-                                    [600,400]
+                                    [4,0], 
+                                    # [200,400], 
+                                    # [360,400], 
+                                    # [373,400], 
+                                    # [600,400]
                                     ], 
                                 drawdomain=True, 
                                 fulldomain=False, 

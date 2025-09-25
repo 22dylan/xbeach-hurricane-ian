@@ -14,7 +14,7 @@ class plot_transect():
         self.model_runname = model_runname
         self.path_to_model = os.path.join(self.file_dir, "..", "..", "xbeach", "models", self.model_runname)
         self.var = var
-        self.xgr, self.ygr = self.read_grid()
+        self.xgr, self.ygr, self.zgr = self.read_grid()
 
 
     def var2label(self, var):
@@ -51,11 +51,14 @@ class plot_transect():
         slice_data = ds[var][0,:,:]
         return slice_data
 
+
+
     def read_grid(self):
         fn = os.path.join(self.path_to_model, "x.grd")
         if os.path.isfile(fn):
             xgrid = os.path.join(self.path_to_model, "x.grd")
             ygrid = os.path.join(self.path_to_model, "y.grd")
+            zgrid = os.path.join(self.path_to_model, "z.grd")
 
             with open(xgrid,'r') as f:
                 for cnt, line in enumerate(f.readlines()):
@@ -69,6 +72,11 @@ class plot_transect():
                     y_ = [float(i.strip()) for i in line.split()][0]
                     ys.append(y_)
 
+            zgr = np.zeros((len(ys), len(xs)))
+            with open(zgrid,'r') as f:
+                for cnt, line in enumerate(f.readlines()):
+                    z_ = [float(i.strip()) for i in line.split()]
+                    zgr[cnt,:] = z_
 
             xgr, ygr = np.meshgrid(xs, ys)
         else:
@@ -89,7 +97,7 @@ class plot_transect():
             ys = np.arange(start=0, stop=ny*dy+dx, step=dy)
             xgr, ygr = np.meshgrid(xs, ys)
 
-        return xgr, ygr
+        return xgr, ygr, zgr
 
 
     def plot_water_level_transect(self, y_trans, ts, plot_ground=True, 
@@ -100,28 +108,38 @@ class plot_transect():
         fig, ax = plt.subplots(1,1,figsize=figsize)
         colors = sns.color_palette("viridis")
         if plot_ground == True:
-            grnd, time = self.read_data_xarray_transect(var="zb", idy=idy, t_idx=0, rtn_time_array=True)
+            grnd = self.zgr[idy,:]
+            # _, time = self.read_data_xarray_transect(var="zb", idy=idy, t_idx=0, rtn_time_array=True)
+        fn = os.path.join(self.path_to_model, "xboutput.nc")
+        ds = xr.open_dataset(fn, chunks={"globaltime": 100})
+        time = ds["globaltime"].values
 
         # get data for variable
         for t_i, t in enumerate(ts):
             t_sec = t*3600
             t_idx = np.argmin(np.abs(time - t_sec))
-            
+
+            print("  found nearest time step as to t = {:.2f} hr is t = {:.2f} hr" .format(t, time[t_idx]/3600))
+
             data_ = self.read_data_xarray_transect(var=self.var, idy=idy, t_idx=t_idx)
             data_[data_<-99999] = 0
             c = colors[t_i]
 
-            # -- temporary            
             if h_plus_zs:
                 data_zs = self.read_data_xarray_transect(var="zs", idy=idy, t_idx=t_idx)
+                data_zs1 = self.read_data_xarray_transect(var="zs1", idy=idy, t_idx=t_idx)
+                data_zs0 = self.read_data_xarray_transect(var="zs0", idy=idy, t_idx=t_idx)
+
                 data_zs[data_<-99999] = 0
-                data_tot = data_zs + data_
+                # data_tot = data_zs + data_
 
-                ax.plot(data_tot, color=c, lw=2, label="H+zs" .format(t))
-                ax.plot(data_zs, color="grey", ls="-.", lw=1, label="zs" .format(t))
-                ax.plot(data_, color="green", lw=1, label="H" .format(t))
+                # ax.plot(data_tot, color=c, lw=2, label="H+zs" .format(t))
 
-                s_title = "water elevation at y={} m\nt={:.2f} hr ({:.0f} s)" .format(y_trans, t, t*3600)
+                ax.plot(data_zs, color="grey", ls="-", lw=1, label="zs")
+                ax.plot(data_zs0, color="red", ls="-.", lw=1, label="zs0")
+                ax.plot(data_zs1, color="blue", ls="-.", lw=1, label="zs1")
+                
+                s_title = "water elevation at y={} m\nt={:.2f} hr ({:.0f} s)" .format(y_trans, time[t_idx]/3600, time[t_idx])
             else:
                 ax.plot(data_, color=c, lw=2, label="{:.2f} hr" .format(t))
                 s_title = "water elevation at y={} m" .format(y_trans)
@@ -151,6 +169,7 @@ class plot_transect():
         if drawdomain:
             data_plot = self.read_data_xarray_gd()
 
+
             if fulldomain:
                 figsize=(4,8)
             else:
@@ -179,6 +198,8 @@ class plot_transect():
                             pad_inches=0.1,
                             )
 
+
+
     def video_transect(self, y_trans, t_start=None, t_stop=None, h_plus_zs=True, dpi=300):
         idy = np.argmin(np.abs(self.ygr[:,0] - y_trans))
 
@@ -200,7 +221,7 @@ class plot_transect():
             self.plot_water_level_transect(
                                     y_trans=y_trans, 
                                     ts=[time[t_idx]/3600],
-                                    h_plus_zs=True, 
+                                    h_plus_zs=h_plus_zs, 
                                     legend=False,
                                     figsize=figsize,
                                     dpi=dpi,
@@ -243,21 +264,21 @@ class plot_transect():
 
 if __name__ == "__main__":
 
-    pt = plot_transect("run15-microdomain-1m-bldgs-2hr-tideloc2", var="H")
-    # pt.plot_water_level_transect(y_trans=400, 
-    #                              ts=[1.8],
-    #                              h_plus_zs=True,
-    #                              drawdomain=False, 
-    #                              fulldomain=False,
-    #                              # fname="temp.png"
-    #                              )
+    pt = plot_transect("test", var="H")
+    pt.plot_water_level_transect(y_trans=400,
+                                 ts=[1],
+                                 h_plus_zs=False,
+                                 drawdomain=False, 
+                                 fulldomain=False,
+                                 # fname="run26_t1hr.png"
+                                 )
 
-    pt.video_transect(y_trans=400,
-                      t_start=1,
-                      t_stop=2,
-                      h_plus_zs=True,
-                      dpi=300,
-                      )
+    # pt.video_transect(y_trans=400,
+    #                   t_start=1,
+    #                   t_stop=1.5,
+    #                   h_plus_zs=True,
+    #                   dpi=100,
+    #                   )
 
     plt.show()
 
