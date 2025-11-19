@@ -26,26 +26,27 @@ class setup_xbeach():
 
     def input_vals(self):
         inputs = {
-        "model_name": "run45",
-        "duration": 2,          # time step (hr) in adcirc/swan time to start running XBeach
-        "elevated_bldgs": False,
+        "model_name": "run65b",
+        "duration": 4,          # time step (hr) in adcirc/swan time to start running XBeach
+        "elevated_bldgs": True,
+        "spatial_join_elevated": False,     # if doing spatial join to merge footprints with FFE, else use FolioID to merge
+
         "path_to_ffe": os.path.join(self.file_dir, "..",  "data", "mehrshad", "data", "Geoscience-collection--overall-dataset", "data", "FMB_VDA_FFE_Final.csv"),
         "path_to_dem": os.path.join(self.file_dir, "..",  "data", "dem", "dem-resampled.tiff"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
-        "path_to_domain": os.path.join(self.file_dir, "..",  "data", "xbeach-domain", "xbeach-domain-micro-epsg32617.geojson"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "data", "xbeach-domain", "xbeach-domain-larger-epsg32617.geojson"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "data", "xbeach-domain", "xbeach-domain2-epsg32617.geojson"),
-        # "path_to_domain": os.path.join(self.file_dir, "..", "data", "xbeach-domain", "xbeach-domain-transects-epsg32617.geojson"),
+
+        "path_to_domain": os.path.join(self.file_dir, "..", "data", "xbeach-domain", "xbeach-domain-epsg32617.geojson"),
+        # "path_to_domain": os.path.join(self.file_dir, "..",  "data", "xbeach-domain", "xbeach-domain-micro-epsg32617.geojson"),
+
         # "path_to_buildings": None,
-        "path_to_buildings": os.path.join(self.file_dir, "..", "data", "buildings", "ft_myers_bldgs_micro.geojson"),
-        # "path_to_buildings": os.path.join(self.file_dir, "..", "data", "buildings", "ft_myers_bldgs_estero.geojson"),
-        "path_to_forcing": os.path.join(self.file_dir, "..", "data", "forcing"),
-        "forcing_files": ["xbeach1-sw.dat", "xbeach2-se.dat", "xbeach3-nw.dat", "xbeach4-ne.dat", "xbeach5-nearshore.dat"],
-        "forcing_pts_geojson": os.path.join(self.file_dir, "..", "data", "forcing", "forcing-pts.geojson"),
+        "path_to_buildings": os.path.join(self.file_dir, "..", "data", "buildings", "amini-bldgs-estero.geojson"),
+
+        "path_to_forcing": os.path.join(self.file_dir, "..", "data", "forcing", "2025-10-24-update"),
+        "forcing_ids": ["ff71b097", "fbcc9a44"],     # forcing point IDs starting from lower left corner or going clockwise (XBeach notation)
+        # "forcing_ids": ["f4fad26a", "0199419d"],     # forcing point IDs starting from lower left corner or going clockwise (XBeach notation)
+
         "smooth_grid": True,
         "extend_grid": True,
         "save_pts_geojson": None,
-        # "save_pts_geojson": os.path.join(self.file_dir, "..", "data", "savepoints", "savepoints-epsg32617.geojson"),
         "local_utm_epsg": "EPSG:32617",
         "drawfigs": True,
         "savefigs": True,
@@ -54,7 +55,7 @@ class setup_xbeach():
 
     def set_xbeach_params(self):
         self.xbeach_params = {
-                    "xbeach_res" : 1,          # in local utm units (m here).
+                    "xbeach_res" : 2,          # in local utm units (m here).
                     
                     # -- grid input --
                     # "xori"      : 0,            # x-coordinate of origin of axis
@@ -84,10 +85,11 @@ class setup_xbeach():
                     # "nmpi"        : 3,            # Number of domains in alongshore direction when manually specifying mpi domains
                     # "mpiboundary" : "man",        # Fix mpi boundaries along y-lines, x-lines, use manual defined domains or find shortest boundary automatically
                     "outputprecision": "single",    # Switch between single and double precision output in netcdf (default: double)
+                    "random"    : 0,            # Switch to enable random seed for instat = jons, swan or vardens boundary conditions
 
                     # -- time input --
                     "tstart"    : 0,            # Start time of output, in morphological time
-                    "tintg"     : 1,            # interval time of global output
+                    "tintg"     : 0.5,         # interval time of global output
                     "tintm"     : 400,          # interval time of mean, var, max, min output
                     "tintp"     : 0.5,          # interval time of point/runup gauge output
                     # "tstop"     : 200000,     # end time seconds
@@ -101,7 +103,7 @@ class setup_xbeach():
                     # -- boundary conditions --
                     "zs0file"   : "water_elev.dat", # Name of tide boundary condition series
                     "tideloc"   : 1,                # Number of corner points on which a tide time series is specified
-                    "tidetype"  : "hybrid",         # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
+                    # "tidetype"  : "hybrid",         # Switch for offfshore boundary, velocity boundary or instant water level boundary (instant, velocity, hybrid; default velocity)
                     # "zs0"       : 0,              # Inital water level
                     # "paulrevere": "sea" ,         # Specifies tide on sea and land or two sea points if tideloc = 2 (land, sea)
                     # "tidelen"   : None,           # length of tide signal (doesn't appear to be read in xbeach)
@@ -111,11 +113,11 @@ class setup_xbeach():
                     # -- swan wave input options
                     "wbctype"   : "swan",           # swan wave input
                     "bcfile"    : "loclist.txt",    # Name of spectrum file; use if providing multiple spectra (nspectrumloc>1)
-                    "nspectrumloc": 1,              # number of wave spectra in offshore boundary
+                    "nspectrumloc": 2,              # number of wave spectra in offshore boundary
                     # "dthetaS_XB": 0,              # [Note: variable set later in code] The (counter-clockwise) angle in the degrees needed to rotate from the x-axis in swan to the x-axis pointing east
 
                     # -- wave calculation options
-                    "wavemodel" : "nonh",     # (0) stationary, (1) surfbeat or (2) nonh
+                    # "wavemodel" : "nonh",     # (0) stationary, (1) surfbeat or (2) nonh
                     # "wbctype"   : "jonstable",  # New wave boundary condition type
                     # "nspectrumloc": 1,            # number of wave spectra in offshore boundary
                     # "bcfile"    : "jonswap.txt",         # Name of spectrum file
@@ -172,8 +174,10 @@ class setup_xbeach():
         self.set_domain_micro(input_vals["path_to_domain"])
         self.set_model_name(input_vals["model_name"])
         self.set_t_start_stop(input_vals["duration"])
-        
+        self.set_local_utm_epsg(input_vals["local_utm_epsg"])
+
         self.set_elevated_bldgs(input_vals["elevated_bldgs"])
+        self.set_spatial_join(input_vals["spatial_join_elevated"])
         self.set_path_to_ffe(input_vals["path_to_ffe"])
 
         self.set_path_to_dem(input_vals["path_to_dem"])
@@ -182,11 +186,8 @@ class setup_xbeach():
         self.set_smooth_grid(input_vals["smooth_grid"])
         self.set_extend_grid(input_vals["extend_grid"])
 
-        self.set_path_to_forcing(input_vals["path_to_forcing"])
-        self.set_forcing_files(input_vals["forcing_files"])
-        self.set_forcing_pts_geojson(input_vals["forcing_pts_geojson"])
+        self.set_forcing_inputs(input_vals["path_to_forcing"], input_vals["forcing_ids"])
         self.set_save_pts_geojson(input_vals["save_pts_geojson"])
-        self.set_local_utm_epsg(input_vals["local_utm_epsg"])
         self.set_drawfigs(input_vals["drawfigs"])
         self.set_savefigs(input_vals["savefigs"])
 
@@ -209,6 +210,7 @@ class setup_xbeach():
                     3:   {"start": 65,    "stop":  68},
                     4:   {"start": 64,    "stop":  68},
                     6:   {"start": 63,    "stop":  69},
+                    8:   {"start": 62,    "stop":  70},
                     12:  {"start": 60,    "stop":  72}
                                 }
         self.t_start = duration_to_start_stop[val]["start"]
@@ -216,6 +218,9 @@ class setup_xbeach():
 
     def set_elevated_bldgs(self, val=None):
         self.elevated_bldgs = val
+
+    def set_spatial_join(self, val=None):
+        self.spatial_join = val
 
     def set_path_to_ffe(self, val=None):
         self.path_to_ffe = val
@@ -235,15 +240,19 @@ class setup_xbeach():
     def set_extend_grid(self, val):
         self.extend_grid_tf = val
 
-    def set_path_to_forcing(self, val=None):
+    def set_forcing_inputs(self, val, frcng_ids):
         self.path_to_forcing = val
-    
-    def set_forcing_files(self, val=None):
-        self.forcing_files = val
-        self.forcing_loc_keys = {1: "sw", 2:"se", 3:"nw", 4:"ne", 5:"nearshore"}
+        self.frcng_ids = frcng_ids
+        
+        all_forcing_files = os.listdir(self.path_to_forcing)
+        self.water_elevation_files = [i for i in all_forcing_files if ".dat" in i]
+        self.swan_file = [i for i in all_forcing_files if ".out" in i]
 
-    def set_forcing_pts_geojson(self, val=None):
-        self.forcing_pts_geojson = val
+        fn_pts_geojson = [i for i in all_forcing_files if ".geojson" in i][0]
+        self.frcng_pts_gdf = gpd.read_file(os.path.join(self.path_to_forcing, fn_pts_geojson))
+        self.frcng_pts_gdf.set_index("uid", inplace=True)
+        self.frcng_pts_gdf.to_crs(self.local_epsg)
+        self.frcng_pts_gdf["swan_order"] = self.frcng_pts_gdf["swan_order"].astype("Int64")
     
     def set_save_pts_geojson(self, val):
         self.save_pt_geojson = val
@@ -265,8 +274,8 @@ class setup_xbeach():
         # xgr, ygr, zgr = self.xbtools_grid(bathy, x, y)                  # using xbeach tools to prepare xbeach grid
         grid_df, nesgr = self.add_buildings(grid_df)
         savepoint_df = self.setup_savepoints(grid_df)
-        frcng_df = self.setup_forcing(grid_df)
-        self.create_model(grid_df, nesgr, frcng_df, savepoint_df) # writing out xbeach model
+        self.setup_forcing(grid_df)
+        self.create_model(grid_df, nesgr, savepoint_df) # writing out xbeach model
 
     def raster_to_xbeach_grid(self):
         """
@@ -276,6 +285,7 @@ class setup_xbeach():
         Results in an xbeach grid that is orientied with (0,0) in the lower 
         left-hand corner. 
         """
+        print("Preparing grid: ")
         gdf_domain = gpd.read_file(self.path_to_domain)     # read in xbeach domain
         gdf_domain.to_crs(self.local_epsg, inplace=True)
 
@@ -354,7 +364,7 @@ class setup_xbeach():
                             )
 
 
-
+        print("  Done.")
         return grid_df
     
     def grid_df_to_xyz(self, grid_df):
@@ -378,90 +388,6 @@ class setup_xbeach():
         np.savetxt(fn_outy, ygrd, fmt='%.3f', delimiter=' ')
         np.savetxt(fn_outz, zgrd, fmt='%.3f', delimiter=' ')
 
-    # def xbtools_grid(self, bathy, x, y, zgrid_row=None):
-    #     if zgrid_row==None:
-    #         zgrid_row = int(np.rint(np.shape(bathy)[1]/2))
-        
-    #     if self.xbeach_params["vardx"]==1:
-    #         xgr,zgr = xgrid(
-    #                         x=x, 
-    #                         z=bathy[:,zgrid_row], 
-    #                         dxmin=self.xbeach_params["xbeach_res"],       # minimum grid resolution (default=5)
-    #                         vardx=self.xbeach_params["vardx"],            # spatially varying grid (1) or constant (0) (default=1)
-    #                         )
-    #         ygr = ygrid(y=y,
-    #                     dymin=self.xbeach_params["xbeach_res"],      # (default=5)
-    #                     )
-    #     else:
-    #         xgr, ygr = x, y
-
-    #     self.xbeach_params["nx"] = np.shape(zgr)[1] -1
-    #     self.xbeach_params["ny"] = np.shape(zgr)[0] -1
-
-    #     if self.drawfigs:
-    #         if self.microdomain:
-    #             figsize=(5,4)
-    #         else:
-    #             figsize=(3,8)
-    #         fig, ax = plt.subplots(1,1, figsize=figsize)
-    #         ax.pcolor(xgr,ygr,zgr, vmin=-8.5, vmax=8.5, cmap="BrBG_r")
-    #         # ax.imshow(zgr, origin="lower", vmin=-8.5, vmax=8.5, cmap="BrBG_r")
-    #         ax.set_xlabel("x (m)")
-    #         ax.set_ylabel("y (m)", rotation=90)
-    #         ax.set_title("xbtg")
-    #         if self.savefig:
-    #             fn = os.path.join(self.path_to_figs, "xbeach-grid-interpolated.png")
-    #             plt.savefig(fn, 
-    #                         transparent=False, 
-    #                         dpi=500,
-    #                         bbox_inches="tight",
-    #                         pad_inches=0.1,
-    #                         )
-
-    #         fig, ax = plt.subplots(1,1,figsize=(8,5))
-    #         ax.plot(xgr[zgrid_row,:],zgr[zgrid_row,:], "k")
-    #         ax.set_xlabel("x")
-    #         ax.set_ylabel("z")
-    #         ax.set_title("Transect at row: {}" .format(zgrid_row))
-    #         if self.savefig:
-    #             fn = os.path.join(self.path_to_figs, "transect{}-smoothed.png" .format(zgrid_row))
-    #             plt.savefig(fn, 
-    #                         transparent=False, 
-    #                         dpi=500,
-    #                         bbox_inches="tight",
-    #                         pad_inches=0.1,
-    #                         )
-
-    #         # -- plotting grid transition
-    #         fig, ax = plt.subplots(1,1, figsize=(8,6))
-    #         x_trans = [0, 50, 100, 200, 300]
-    #         colors = sns.color_palette("viridis", len(x_trans))
-    #         cnt = 0
-    #         for x_trans_ in x_trans:
-    #             idx = np.argmin(np.abs(xgr[0,:] - x_trans_))
-
-    #             y_data = ygr[:,idx]
-    #             y_data = y_data[::-1]
-    #             z_data = zgr[:,idx]
-                    
-    #             ax.plot(y_data, z_data, color=colors[cnt], label="x={}" .format(x_trans_))
-    #             cnt += 1
-    #         ax.xaxis.set_inverted(True)  # inverted axis with autoscaling
-    #         ax.grid()
-    #         ax.set_title("Elevation\nFrom Sea, Looking Towards Land")
-    #         # ax.set_ylim([-3.5, 1.])
-    #         ax.legend(loc="upper right", ncols=len(x_trans))
-        
-    #         if self.savefig:
-    #             fn = os.path.join(self.path_to_figs, "y-transects.png")
-    #             plt.savefig(fn, 
-    #                         transparent=False, 
-    #                         dpi=500,
-    #                         bbox_inches="tight",
-    #                         pad_inches=0.1,
-    #                         )
-
-    #     return xgr, ygr, zgr
     
     def smooth_grid(self, z, D=1.0, dt=0.1, num_steps=10):
         """
@@ -515,12 +441,12 @@ class setup_xbeach():
         function to expand the grid in the y-direction at the top of the domain.
         used when cyclic BCs are turned on.
 
-        pad: number of cells to pad in y-direction;
+        pad: length to pad in y-direction;
         """
         y = grid_df["pt_y"].unique()
-        y_end = int(y[-1])
-        dy = int(y[1]-y[0])
-        y_new = np.array(range(y_end+dy, (y_end+dy*pad)+dy, dy))
+        y_end = y[-1]
+        dy = (y[1]-y[0])
+        y_new = np.arange(y_end+dy, (y_end+pad)+dy, dy)
         y_out = np.append(y, y_new)
 
         # -- getting start and end values for z and y
@@ -541,7 +467,8 @@ class setup_xbeach():
 
         # -- setting up grid of indicies; flattening to put in grid_df
         idx = grid_df["idx"].unique()
-        idy = np.arange(0, pad) + grid_df["idy"].max() + 1
+        idy = np.arange(0, int(pad/dy)) + grid_df["idy"].max() + 1
+
         idx, idy = np.meshgrid(idx,idy)
         idx, idy = idx.flatten(), idy.flatten()
 
@@ -578,6 +505,74 @@ class setup_xbeach():
 
         return grid_new, grid_df
     
+    def repeat_grid_bottom(self, grid, grid_df, xo, yo, theta_r, pad=10):
+        y = grid_df["pt_y"].unique()
+        y_start = int(y[0])
+        y_end = int(y[-1])
+
+        dy = int(y[1]-y[0])
+
+        y_out = np.array(range(y_start, y_end+pad, dy))
+
+        # -- smooth and extend
+        y_new = np.arange(0, pad, dy)
+        y_new = np.flip(y_new)
+        y1 = pad
+        z1 = grid[:,0]
+        y2 = 0
+        z2 = np.average(grid[:,0])
+
+        t = (y_new - y1) / (y2 - y1)
+        theta = np.pi/2 + (np.pi/2) * t
+        s = np.sin(theta)**2
+        S = np.stack((s,) * len(z1), axis=0)
+        z_new = z1[:,None] + ((z2-z1[:, None]) * s)
+        grid_new = np.column_stack((z_new, grid))
+        grid_new = self.smooth_grid(grid_new)
+
+        # ---
+        
+
+        # -- setting up x and y as x-y points (0, 1, 2, 3)
+        nx, ny = np.shape(grid)[0], len(y_out)
+        x = np.arange(0, nx)
+        y = np.arange(0, ny)
+        
+        # -- setting up grid of indicies; flattening to put in grid_df
+        idx, idy = np.meshgrid(x, y)
+        idx, idy = idx.flatten(), idy.flatten()
+
+        # -- setting up pt_x and pt_y; this is with XBeach resolution
+        pt_x = x*self.xbeach_params["xbeach_res"]
+        pt_y = y*self.xbeach_params["xbeach_res"]
+
+        # -- setting up grid of pt_x and pt_y; flattening to put in grid_df
+        pt_x, pt_y = np.meshgrid(pt_x, pt_y)
+        pt_x, pt_y = pt_x.flatten(), pt_y.flatten()
+
+        # -- getting new (xo, yo) for grid expanded at the bottom
+        h = pad   # hypotenuse
+        xp = xo + h*np.sin(theta_r)
+        yp = yo - h*np.cos(theta_r)
+
+        # -- setting x and y coordinates in real-world points; uses origin above which is in model crs
+        pt_x_wrld = xp + pt_x*np.cos(theta_r) - pt_y*np.sin(theta_r)
+        pt_y_wrld = yp + pt_x*np.sin(theta_r) + pt_y*np.cos(theta_r)
+
+        grid_df = pd.DataFrame()
+        grid_df["pt_x"] = pt_x
+        grid_df["pt_y"] = pt_y
+        grid_df["pt_x_wrld"] = pt_x_wrld
+        grid_df["pt_y_wrld"] = pt_y_wrld
+        grid_df["idx"] = idx
+        grid_df["idy"] = idy
+        grid_df["elev"] = grid_new[grid_df["idx"], grid_df["idy"]]
+        grid_new = np.zeros((nx, ny))
+        grid_new[grid_df["idx"], grid_df["idy"]] = grid_df["elev"]
+
+        return grid_new, grid_df
+
+
     def expand_grid_bottom(self, grid, grid_df, xo, yo, theta_r, pad=10):
         """
         function to expand the grid in the y-direction at the top of the domain.
@@ -590,25 +585,7 @@ class setup_xbeach():
         y_end = int(y[-1])
 
         dy = int(y[1]-y[0])
-        # y_new = np.array(range((y_start-dy*pad), y_start, dy))
-        # y_out = np.append(y_new,y)
         y_out = np.array(range(y_start, y_end+dy*pad, dy))
-
-        # # -- getting start and end values for z and y
-        # y1 = y_new[0]
-        # z1 = grid[:,0]
-        # y2 = y_new[-1]
-        # z2 = grid[:,-1]
-
-        # # -- sin^2 smoothing
-        # t = (y_new - y1) / (y2 - y1)
-        # theta = np.pi/2 + (np.pi/2) * t
-        # s = np.sin(theta)**2
-        # s = np.stack((s,) * len(z1), axis=0)
-
-        # # -- appending to grid
-        # z_new = z1[:,None] + ((z2-z1)[:, None] * s)
-        # grid_new = np.column_stack((z_new, grid))
 
         # -- setting up x and y as x-y points (0, 1, 2, 3)
         nx, ny = np.shape(grid)[0], len(y_out)
@@ -667,6 +644,7 @@ class setup_xbeach():
                 layer. For example, 0 indicate no erosion is possible, whereas 
                 values 10 indicate that up to 10m of erosion is possible. 
         """
+        print("Adding buildings: ")
         xgr, ygr, zgr = self.grid_df_to_xyz(grid_df)
         zgr_original = np.copy(zgr)
         nesgr = np.ones_like(zgr)
@@ -674,7 +652,7 @@ class setup_xbeach():
             gdf_buildings = gpd.read_file(self.path_to_buildings)
             gdf_buildings.to_crs(self.local_epsg, inplace=True)
             if self.elevated_bldgs:
-                gdf_buildings = self.remove_elevated_bldgs(gdf_buildings)
+                gdf_buildings = self.remove_elevated_bldgs(gdf_buildings, spatial_join=self.spatial_join)
         else:
             return grid_df, nesgr
 
@@ -700,6 +678,7 @@ class setup_xbeach():
             ax.set_xlabel("x (m)")
             ax.set_ylabel("y (m)", rotation=90)
             ax.set_title("grid-w-bldgs")
+            ax.set_aspect("equal")
             if self.savefig:
                 fn = os.path.join(self.path_to_figs, "grid-w-bldgs.png")
                 plt.savefig(fn, 
@@ -729,6 +708,7 @@ class setup_xbeach():
                                     pad_inches=0.1,
                                     )
         grid_df["elev"] = zgr[grid_df["idy"], grid_df["idx"]]
+        print("  Done.")
         return grid_df, nesgr
 
     def setup_savepoints(self, grid_df):
@@ -741,39 +721,39 @@ class setup_xbeach():
             svpts = gpd.sjoin_nearest(svpts, grid_df[["idx","idy", "geometry"]], how="left", distance_col="distance")
             return svpts
 
-    def remove_elevated_bldgs(self, bldgs):
-        df = pd.read_csv(self.path_to_ffe)
-        gdf_ffe = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y), crs="epsg:4326")
-        gdf_ffe.to_crs(self.local_epsg, inplace=True)
-        
-        ffe_elev_status = []
-        ffe_foundation = []
-        for bldg_i, bldg in bldgs.iterrows():
-            pt_in_poly = bldg.geometry.contains(gdf_ffe.geometry)
-            if pt_in_poly.sum()>0:
-                bldg_ffe = gdf_ffe.loc[pt_in_poly==True]
-                bldg_ffe = bldg_ffe.iloc[0]
-                ffe_elev_status.append(bldg_ffe["FFE_elev_status"])
-                ffe_foundation.append(bldg_ffe["FFE_foundation"])
-            else:
-                ffe_elev_status.append(np.nan)
-                ffe_foundation.append(np.nan)
+    def remove_elevated_bldgs(self, bldgs, spatial_join=True):
+        df = pd.read_csv(self.path_to_ffe)        
+        if spatial_join == True:
+
+            gdf_ffe = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y), crs="epsg:4326")
+            gdf_ffe.to_crs(self.local_epsg, inplace=True)
+            
+            ffe_elev_status = []
+            ffe_foundation = []
+            for bldg_i, bldg in bldgs.iterrows():
+                pt_in_poly = bldg.geometry.contains(gdf_ffe.geometry)
+                if pt_in_poly.sum()>0:
+                    bldg_ffe = gdf_ffe.loc[pt_in_poly==True]
+                    bldg_ffe = bldg_ffe.iloc[0]
+                    ffe_elev_status.append(bldg_ffe["FFE_elev_status"])
+                    ffe_foundation.append(bldg_ffe["FFE_foundation"])
+                else:
+                    ffe_elev_status.append(np.nan)
+                    ffe_foundation.append(np.nan)
 
 
-        bldgs["ffe_elev_status"] = ffe_elev_status
-        bldgs["ffe_foundation"]  = ffe_foundation
-        remove_bldgs = (bldgs["ffe_elev_status"] == "elevated") & (bldgs["ffe_foundation"]=="Piles/Columns")
+            bldgs["FFE_elev_status"] = ffe_elev_status
+            bldgs["FFE_foundation"]  = ffe_foundation
+        else:
+            df = df[["TA_FolioID", "FFE_elev_status", "FFE_foundation"]]
+            bldgs = pd.merge(bldgs, df, left_on="FolioID", right_on="TA_FolioID")
+
+        remove_bldgs = (bldgs["FFE_elev_status"] == "elevated") & (bldgs["FFE_foundation"]=="Piles/Columns")
         bldgs = bldgs.loc[~remove_bldgs]
 
         n_removed = remove_bldgs.sum()
-        print("{} buildings are elevated and removed from building inventory ({} bldgs remain)" .format(n_removed, len(bldgs)))
-
         return bldgs
 
-    def read_forcing_locs(self):
-        gdf = gpd.read_file(self.forcing_pts_geojson)
-        gdf = gdf.to_crs(self.local_epsg)
-        return gdf
 
     def get_wind_angles(self, x, y):
         """
@@ -791,45 +771,34 @@ class setup_xbeach():
             if using swan spectra, then we delete the wave information 
             from this dataframe.
         """
-        frcg_pts_gdf = self.read_forcing_locs()
-        for file_i, file in enumerate(self.forcing_files):
-            fn = os.path.join(self.path_to_forcing, file)
+        print("Preparing Forcing: ")
+        forcing_dict = {}
+        for uid_i, uid in enumerate(self.frcng_ids):
+            frcng_pt_gdf_ = self.frcng_pts_gdf.loc[uid]
+
+            fn = os.path.join(self.path_to_forcing, frcng_pt_gdf_["xbeach_file"])
             df_ = self.frcing_to_dataframe(fn, t_start=self.t_start, t_stop=self.t_stop)
-            if file_i == 0:
-                frcng_df = df_.copy()
-                frcng_df["el{}-{}" .format(file_i+1, self.forcing_loc_keys[file_i+1])] = df_["el"]
-                frcng_df["windv"] = np.sqrt(np.square(frcng_df["wx"]) + np.square(frcng_df["wy"]))
-                windth = self.get_wind_angles(frcng_df["wx"].values, frcng_df["wy"].values)
-                windth_nautical = []
-                for w_ in windth:
-                    w_ = self.cartesian_to_nautical_angle(w_)
-                    w_ = self.nautical_to_xbeach_angle(w_, self.alfa)
-                    windth_nautical.append(w_)
-                frcng_df["windth"] = windth_nautical
+            df_["windv"] = np.sqrt(np.square(df_["wx"]) + np.square(df_["wy"]))
+            windth = self.get_wind_angles(df_["wx"].values, df_["wy"].values)
+            windth_nautical = []
+            for w_ in windth:
+                w_ = self.cartesian_to_nautical_angle(w_)
+                w_ = self.nautical_to_xbeach_angle(w_, self.alfa)
+                windth_nautical.append(w_)
+            df_["windth"] = windth_nautical
+            if self.xbeach_params["wbctype"] == "swan":
+                del df_["Hs"]
+                del df_["Tp"]
 
-                if self.xbeach_params["wbctype"] != "swan":
-                    frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
-                    frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
-                    frcng_df["mainang{}" .format(file_i+1)] = df_["mainang"]
-                    del frcng_df["el"]
-                    del frcng_df["Hs"]
-                    del frcng_df["Tp"]
-                    del frcng_df["mainang"]
-            else:
-                frcng_df["el{}-{}" .format(file_i+1, self.forcing_loc_keys[file_i+1])] = df_["el"]
-                if self.xbeach_params["wbctype"] != "swan":
-                    frcng_df["Hs{}" .format(file_i+1)] = df_["Hs"]
-                    frcng_df["Tp{}" .format(file_i+1)] = df_["Tp"]
-                    frcng_df["mainang{}" .format(file_i+1)] = df_["mainang"]
-
+            forcing_dict[uid] = df_.copy()
 
         # -- winds
         # writing water elevation data to output file
-        wind_df = frcng_df[["t_sec", "windv", "windth"]]
+        wind_df = forcing_dict[self.frcng_ids[0]][["t_sec", "windv", "windth"]]
 
         fn_out = os.path.join(self.path_to_model, self.xbeach_params["windfile"])
         wind_df.to_csv(fn_out, sep="\t", index=None, header=None, float_format='%10.3f')
-             
+        
         # -- water elevations --
         """
             Note that XBeach goes clockwise around domain,
@@ -842,49 +811,18 @@ class setup_xbeach():
             therefore pts 1 and 3. 
             The two bayside points are 2 and 4
 
-           2|---------|3
-            |         |
-            | XBEACH  |
-            |         |
-            |         |
-           1|---------|4 
-
-           3|---------|4
-            |         |
-            |  Waves  |
-            |         |
-            |         |
-           1|---------|2 
-
-
-
-        # original water elevation data.
-           4|---------|3
-            |         |
-            |  water  |
-            |  elev   |
-            |         |
-           1|---------|2 
-
         """
-        if self.xbeach_params["tideloc"] == 1:
-            if self.microdomain:
-                elev_df = frcng_df[["t_sec", "el5-nearshore"]]
-            else:
-                elev_df = frcng_df[["t_sec", "el1-sw"]]
-
-        elif self.xbeach_params["tideloc"] == 2:
-            if self.microdomain:
-                elev_df = frcng_df[["t_sec", "el5-nearshore", "el5-nearshore"]]
-            else:
-                elev_df = frcng_df[["t_sec", "el1-sw", "el3-nw"]]           # if tideloc=2, see paulrevere
-        elif self.xbeach_params["tideloc"] == 4:
-            elev_df = frcng_df[["t_sec", "el1-sw", "el3-nw", "el4-ne", "el2-se"]]       # forcing points must be clockwise around domain starting from lower left corner
+        elev_df = pd.DataFrame()
+        elev_df["t_sec"] = forcing_dict[self.frcng_ids[0]]["t_sec"]
+        for uid_i, uid in enumerate(self.frcng_ids):
+            elev_df["el_{}" .format(uid)] = forcing_dict[uid]["el"]
+            if uid_i + 1 == self.xbeach_params["tideloc"]:
+                break
 
         # writing water elevation data to output file
         fn_out = os.path.join(self.path_to_model, self.xbeach_params["zs0file"])
         elev_df.to_csv(fn_out, sep="\t", index=None, header=None, float_format='%10.3f')
-                
+
         """ now turning attention to wave forcing.
             
             wave forcing can be specified at specific points, so I'm 
@@ -897,29 +835,22 @@ class setup_xbeach():
             See diagram above. 
         """
         grid_df_temp = gpd.GeoDataFrame(grid_df, geometry=gpd.points_from_xy(grid_df["pt_x_wrld"], grid_df["pt_y_wrld"]), crs=self.local_epsg)
-        frcg_pts_gdf = gpd.sjoin_nearest(frcg_pts_gdf, grid_df_temp[["idx","idy", "geometry"]], how="left", distance_col="distance")
+        frcg_pts_gdf = gpd.sjoin_nearest(self.frcng_pts_gdf, grid_df_temp[["idx", "idy", "pt_x", "pt_y", "geometry"]], how="left", distance_col="distance")
 
-        offshore_points = [1,3]
-        bayside_pts = [2,4]
-        if self.microdomain:
-            spectra_points = [5]        # nearshore spectra
-            offshore_points = [5]
         if self.xbeach_params["wbctype"] == "swan":     # if wave forcing from swan spectra
-            s_, e_ = self.process_swan_output(n_header=100, n_locs=7, swan_points=offshore_points, t_start=self.t_start, t_stop=self.t_stop)
+            swan_points = self.frcng_pts_gdf.loc[self.frcng_ids]["swan_order"].to_list()
+            s_, e_ = self.process_swan_output(n_header=97, n_locs=4, swan_points=swan_points, t_start=self.t_start, t_stop=self.t_stop)
             
-            # determine which swan spectra points to use. 
-            if self.xbeach_params["nspectrumloc"] == 1:
-                spectra_points = [1]
-            elif self.xbeach_params["nspectrumloc"] == 2:
-                spectra_points = offshore_points
-            elif self.xbeach_params["nspectrumloc"] == 4:
-                spectra_points = offshore_points + bayside_pts
-                print("WARNING, nspectrumloc=4; need to confirm spectra can be on bayside.")
+            # # determine which swan spectra points to use. 
+            # if self.xbeach_params["nspectrumloc"] == 1:
+            #     spectra_points = [1]
+            # elif self.xbeach_params["nspectrumloc"] == 2:
+            #     spectra_points = offshore_points
 
-            if self.microdomain:
-                spectra_points = [5]        # nearshore spectra
+            # if self.microdomain:
+            #     spectra_points = [5]        # nearshore spectra
 
-            for sp in spectra_points:  # looping through wave spectra points and write to filelist. 
+            for sp in swan_points:  # looping through wave spectra points and write to filelist. 
                 fn_out = os.path.join(self.path_to_model, "filelist{}.txt" .format(sp))
                 with open(fn_out, 'w') as f:
                     f.write("FILELIST\n")
@@ -931,15 +862,13 @@ class setup_xbeach():
             fn = os.path.join(self.path_to_model, "loclist.txt")
             with open(fn, 'w') as f:
                 f.write("LOCLIST\n" .format(self.model_name))
-                for sp in offshore_points:
-                    idx = frcg_pts_gdf.loc[frcg_pts_gdf["id"]==sp]["idx"].item()
-                    idy = frcg_pts_gdf.loc[frcg_pts_gdf["id"]==sp]["idy"].item()
+                for sp in swan_points:
+                    idx = frcg_pts_gdf.loc[frcg_pts_gdf["swan_order"]==sp]["pt_x"].item()
+                    idy = frcg_pts_gdf.loc[frcg_pts_gdf["swan_order"]==sp]["pt_y"].item()
                     f.write("{}. {}. filelist{}.txt\n" .format(idx, idy, sp))
             self.xbeach_params["dthetaS_XB"] = self.alfa
 
-
         elif self.xbeach_params["wbctype"]== "jonstable":   # if wave forcing from jonswap table
-            
             if self.xbeach_params["nspectrumloc"] == 1:  # if one wave spectra provided
                 sp_loc = 1
                 wave_df = frcng_df[["Hs{}" .format(sp_loc), "Tp{}" .format(sp_loc), "mainang{}" .format(sp_loc), "gammajsp", "s", "duration", "dtbc"]]
@@ -966,8 +895,8 @@ class setup_xbeach():
                 with open(fn, 'w') as f:
                     f.write("LOCLIST\n" .format(self.model_name))
                     for sp in spectra_points:
-                        idx = frcg_pts_gdf.loc[frcg_pts_gdf["id"]==sp]["idx"].item()
-                        idy = frcg_pts_gdf.loc[frcg_pts_gdf["id"]==sp]["idy"].item()
+                        idx = frcg_pts_gdf.loc[frcg_pts_gdf["id"]==sp]["pt_x"].item()
+                        idy = frcg_pts_gdf.loc[frcg_pts_gdf["id"]==sp]["pt_y"].item()
                         f.write("{}. {}. jonswap{}.txt\n" .format(idx, idy, sp))
 
         if self.drawfigs:
@@ -985,8 +914,8 @@ class setup_xbeach():
                                 bbox_inches="tight",
                                 pad_inches=0.1,
                                 )
+        print("  Done.")
 
-        return frcng_df
 
     def frcing_to_dataframe(self, fn, n_header=3, n_var=7, t_start=0, t_stop=-1):
         t, el, wx, wy, hs, Tp, wavedir = [], [], [], [], [], [], [],
@@ -1116,7 +1045,7 @@ class setup_xbeach():
 
                     if ("ZERO" in line) or ("FACTOR" in line) or ("NODATA" in line):
                         swan_loc_cnt += 1
-                        if swan_loc_cnt == 7:
+                        if swan_loc_cnt == n_locs:
                             swan_loc_cnt = 0
                             time += 1
                         if (time in swan_spectra[swan_loc_cnt]) == False:
@@ -1134,7 +1063,7 @@ class setup_xbeach():
                 if time == 0:
                     continue
                 # fn_out = os.path.join(swan_dir_out, "swanpt{}-t{}.out" .format(spectra, time))
-                fn_out = os.path.join(self.path_to_model, "swanpt{}-t{}.out" .format(spectra, time))
+                fn_out = os.path.join(self.path_to_model, "swanpt{}-t{}.out" .format(int(spectra), time))
                 latlong_written = False
                 with open(fn_out, 'w') as f:
                     for l in header_lines:
@@ -1151,7 +1080,7 @@ class setup_xbeach():
                             continue
                         f.write(l)
                     
-                    for l in swan_spectra[spectra-1][time]:
+                    for l in swan_spectra[spectra][time]:
                         f.write(l)
 
         return t_start_step, t_stop_step
@@ -1187,7 +1116,8 @@ class setup_xbeach():
         return deg
 
 
-    def create_model(self, grid_df, nesgr, elev_df, savepoint_df):
+    def create_model(self, grid_df, nesgr, savepoint_df):
+        print("Writing model: ")
         xgr, ygr, zgr = self.grid_df_to_xyz(grid_df)
         # writing model using xbeachtools
         xb_setup = XBeachModelSetup(self.model_name)
@@ -1228,6 +1158,8 @@ class setup_xbeach():
 
         self.write_xbeach_params(savepoint_df)
         self.move_figs()
+        print("  Done.")
+        
 
     def rename_file(self, fn_old, fn_new):
         fn_old = os.path.join(self.path_to_model, fn_old)
@@ -1236,8 +1168,9 @@ class setup_xbeach():
 
 
     def write_xbeach_params(self, savepoint_df):
+        drs_input_keys = ["xo", "yo", "theta"] # keys for dylan to post-process, but not used by xbeach
         grid_input_keys = ["nx", "ny", "dx", "dy", "xori", "yori", "alfa", "depfile", "vardx", "xfile", "yfile", "posdwn", "thetamin", "thetamax", "dtheta",  "dtheta_s","dthetaS_XB", "wavint"]
-        numerics_input_keys = ["CFL", "eps", "front", "back", "scheme", "cyclic", "left", "right", "maxdtfac", "mmpi", "nmpi", "mpiboundary", "outputprecision"]
+        numerics_input_keys = ["CFL", "eps", "front", "back", "scheme", "cyclic", "left", "right", "maxdtfac", "mmpi", "nmpi", "mpiboundary", "outputprecision", "random"]
         time_input_keys = ["dt", "tstart", "tintg", "tintm", "tintp", "tstop", "taper", "dtset"]
         general_constants = ["rho", "g"]
         boundary_condition_keys = ["zs0file", "tideloc", "paulrevere", "tidetype", "tidelen", "zs0", "bcfile", "rt", "dtbc", "sprdthr", "wbcversion", "nspectrumloc", "wind", "windfile"]
@@ -1251,6 +1184,7 @@ class setup_xbeach():
             f.write("XBeach Model : {}\n" .format(self.model_name))
             f.write("Params Written : {}\n" .format(datetime.now().replace(second=0, microsecond=0)))
 
+            self.write_xbeach_params_section(f, "Post-Processing Grid Location (not used by XB)", drs_input_keys, sep=":")
             self.write_xbeach_params_section(f, "Grid Input (res python: {})" .format(self.xbeach_params["xbeach_res"]), grid_input_keys)
             self.write_xbeach_params_section(f, "Numerics Input",       numerics_input_keys)
             self.write_xbeach_params_section(f, "Time Input",           time_input_keys)
@@ -1277,12 +1211,12 @@ class setup_xbeach():
                     f.write("{}\n" .format(i))
 
 
-    def write_xbeach_params_section(self, f, title, key_list):
+    def write_xbeach_params_section(self, f, title, key_list, sep="="):
             f.write("\n-----------------------------------------\n" )
             f.write("\n{}\n" .format(title))
             for key in key_list:
                 if key in self.xbeach_params.keys():
-                    f.write("{:20s} = {}\n" .format(key, str(self.xbeach_params[key])))
+                    f.write("{:20s} {} {}\n" .format(key, sep, str(self.xbeach_params[key])))
 
 
 
@@ -1374,9 +1308,10 @@ class setup_xbeach():
         self.origin = (xo, yo)
         self.alfa = theta_d         # storing angle of grid rotation to self.alfa
 
+
+
         l = self.myround(np.average(l), base=self.xbeach_params["xbeach_res"])
         w = self.myround(np.average(w), base=self.xbeach_params["xbeach_res"])
-
         nx = int(w/self.xbeach_params["xbeach_res"])
         ny = int(l/self.xbeach_params["xbeach_res"])
 
@@ -1424,7 +1359,8 @@ class setup_xbeach():
             grid = self.smooth_grid(grid)
         if self.extend_grid_tf:
             if self.xbeach_params["cyclic"] == 1:
-                grid, grid_df = self.expand_grid_top(grid, grid_df, xo, yo, theta_r, pad=50)
+                grid, grid_df = self.repeat_grid_bottom(grid, grid_df, xo, yo, theta_r, pad=250)
+                grid, grid_df = self.expand_grid_top(grid, grid_df, xo, yo, theta_r, pad=250)
             else:
                 grid, grid_df = self.expand_grid_bottom(grid, grid_df, xo, yo, theta_r, pad=200)
                 grid = self.smooth_grid(grid)   # need to resmooth after expanding in bottom. I end up resampling elev when not using cyclic BCs
@@ -1435,6 +1371,12 @@ class setup_xbeach():
         xvals = grid_df["pt_x"].unique()
         yvals = grid_df["pt_y"].unique()
 
+
+        # -- storing x,y origin and angle of rotation; not used by xbeach
+        self.xbeach_params["xo"] = grid_df.loc[(grid_df["pt_x"]==0)&(grid_df["pt_y"]==0), "pt_x_wrld"].item()
+        self.xbeach_params["yo"] = grid_df.loc[(grid_df["pt_x"]==0)&(grid_df["pt_y"]==0), "pt_y_wrld"].item()
+        self.xbeach_params["theta"] = theta_d
+        
         # self.write_grid(grid_df)
         self.xbeach_params["nx"] = len(xvals) - 1
         self.xbeach_params["ny"] = len(yvals) - 1
